@@ -27,6 +27,8 @@ import {
   DEFAULT_SETTINGS,
   type KeepGoingSettings,
 } from "./settings";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { defaultLeaseIO, leasePath, refreshLease, type LeaseRole } from "./lease";
 
 /**
  * pi-keep-going — thin adapter wiring the pure scheduler/detect/guards/settings
@@ -47,6 +49,22 @@ export default function (pi: ExtensionAPI): void {
   // or torn down while it was in flight.
   let generation = 0;
   let sessionAbort: AbortController | null = null;
+  // Advisory single-firer lease: a second pi process on the same session becomes
+  // a read-only reader and never fires, so scheduled jobs are sent exactly once.
+  const leaseIO = defaultLeaseIO();
+  let leaseRole: LeaseRole = "owner";
+  let sessionLeasePath: string | null = null;
+  let sessionId = "";
+
+  function refreshLeaseRole(): void {
+    if (!sessionLeasePath) return;
+    leaseRole = refreshLease({
+      io: leaseIO,
+      path: sessionLeasePath,
+      self: { pid: process.pid, sessionId },
+      now: Date.now(),
+    });
+  }
 
   const AUTO_FETCH_TIMEOUT_MS = 10_000;
   function autoSignal(): AbortSignal {
@@ -76,7 +94,11 @@ export default function (pi: ExtensionAPI): void {
       recordCancelled: (id) => recordCancelled(pi, id),
       recordFired: (id) => recordFired(pi, id),
       onChange: refreshWidget,
-      onTick: refreshWidget,
+      onTick: () => {
+        refreshLeaseRole();
+        refreshWidget();
+      },
+      canFire: () => leaseRole === "owner",
       onFire: (job, meta) => {
         if (meta.late) {
           ctx?.ui.notify(`Sent scheduled message after resume: "${job.message}"`, "info");
@@ -101,6 +123,9 @@ export default function (pi: ExtensionAPI): void {
     generation += 1;
     sessionAbort?.abort();
     sessionAbort = new AbortController();
+    sessionId = sessionCtx.sessionManager.getSessionId();
+    sessionLeasePath = leasePath(getAgentDir(), sessionId);
+    refreshLeaseRole();
     scheduler?.stop();
     scheduler = createScheduler();
     scheduler.load(rebuildFromBranch(sessionCtx.sessionManager));

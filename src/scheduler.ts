@@ -28,6 +28,9 @@ export interface SchedulerDeps {
   onFire?(job: Job, meta: { late: boolean }): void;
   /** Test seam for deterministic ids; defaults to randomUUID. */
   genId?(): string;
+  /** Advisory firing gate: when it returns false (read-only lease), due jobs are
+   * held, not sent, so a second process on the same session never double-fires. */
+  canFire?(): boolean;
 }
 
 export interface NewJob {
@@ -105,6 +108,7 @@ export class Scheduler {
   }
 
   private fireDue(late: boolean): number {
+    if (this.deps.canFire && !this.deps.canFire()) return 0;
     const now = this.deps.now();
     const due = [...this.jobs.values()].filter((j) => now >= j.fireAt);
     for (const job of due) this.fire(job, late);

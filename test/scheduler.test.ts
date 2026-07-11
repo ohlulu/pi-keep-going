@@ -84,6 +84,17 @@ describe("Scheduler firing", () => {
     });
   });
 
+  it("holds due jobs without firing when canFire is false (read-only lease)", () => {
+    const canFire = vi.fn(() => false);
+    const { scheduler, deps, setClock } = harness({ canFire });
+    scheduler.add({ fireAt: 1000, message: "keep going", kind: "manual" });
+    setClock(2000);
+    scheduler.tick();
+    expect(canFire).toHaveBeenCalled();
+    expect(deps.sendUserMessage).not.toHaveBeenCalled();
+    expect(scheduler.list()).toHaveLength(1); // still pending for the owner
+  });
+
   it("fires already-due jobs on load as late", () => {
     const { scheduler, deps, setClock } = harness();
     setClock(5000);
