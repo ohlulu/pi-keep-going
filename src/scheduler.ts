@@ -22,6 +22,8 @@ export interface SchedulerDeps {
   recordFired(id: string): void;
   /** Called after the live set changes, to refresh the widget. */
   onChange?(): void;
+  /** Called at the end of every tick, so the countdown display can refresh. */
+  onTick?(): void;
   /** Called when a job fires; `late` means it was already due at load time. */
   onFire?(job: Job, meta: { late: boolean }): void;
   /** Test seam for deterministic ids; defaults to randomUUID. */
@@ -99,6 +101,7 @@ export class Scheduler {
 
   tick(): void {
     if (this.fireDue(false) > 0) this.deps.onChange?.();
+    this.deps.onTick?.();
   }
 
   private fireDue(late: boolean): number {

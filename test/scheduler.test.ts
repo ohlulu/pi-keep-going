@@ -12,6 +12,7 @@ function harness(overrides: Partial<SchedulerDeps> = {}) {
     recordCancelled: vi.fn(),
     recordFired: vi.fn(),
     onChange: vi.fn(),
+    onTick: vi.fn(),
     onFire: vi.fn(),
     genId: () => `id${++counter}`,
     ...overrides,
@@ -49,13 +50,14 @@ describe("Scheduler CRUD", () => {
 });
 
 describe("Scheduler firing", () => {
-  it("does not fire a future job", () => {
+  it("does not fire a future job but still ticks the widget", () => {
     const { scheduler, deps, setClock } = harness();
     scheduler.add({ fireAt: 5000, message: "later", kind: "manual" });
     setClock(4000);
     scheduler.tick();
     expect(deps.sendUserMessage).not.toHaveBeenCalled();
     expect(scheduler.list()).toHaveLength(1);
+    expect(deps.onTick).toHaveBeenCalled();
   });
 
   it("fires a due job immediately when idle", () => {
