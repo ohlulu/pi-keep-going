@@ -3,6 +3,7 @@ import type { FetchLike, FetchInitLike } from "../src/limits/client";
 import { decodeJwtPayload } from "../src/limits/client";
 import { fetchCodexReset, codexAccountId, CODEX_USAGE_URL } from "../src/limits/codex";
 import { fetchAnthropicReset, ANTHROPIC_USAGE_URL } from "../src/limits/anthropic";
+import { fetchGeminiReset, geminiResetFromBody, GEMINI_QUOTA_URL } from "../src/limits/gemini";
 
 function makeJwt(payload: object): string {
   const b64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
@@ -160,5 +161,57 @@ describe("fetchAnthropicReset", () => {
     );
     await fetchAnthropicReset({ token, fetchImpl, now: NOW });
     expect(seenUrl).toBe(ANTHROPIC_USAGE_URL);
+  });
+});
+
+describe("fetchGeminiReset", () => {
+  const token = "gemini-oauth-token";
+
+  it("picks the earliest bucket resetTime and POSTs the projectId", async () => {
+    let seenUrl = "";
+    let seenInit: FetchInitLike | undefined;
+    const early = "2026-01-01T02:00:00Z";
+    const late = "2026-01-01T09:00:00Z";
+    const fetchImpl = mockFetch(
+      { status: 200, body: { buckets: [{ resetTime: late }, { resetTime: early }] } },
+      (url, init) => {
+        seenUrl = url;
+        seenInit = init;
+      },
+    );
+    const result = await fetchGeminiReset({ token, projectId: "proj-1", fetchImpl, now: NOW });
+    expect(result).toEqual({ ok: true, reset: { at: new Date(Date.parse(early)), source: "body" } });
+    expect(seenUrl).toBe(GEMINI_QUOTA_URL);
+    expect(seenInit?.method).toBe("POST");
+    expect(seenInit?.body).toBe(JSON.stringify({ projectId: "proj-1" }));
+    expect(seenInit?.headers?.Authorization).toBe(`Bearer ${token}`);
+  });
+
+  it("is unsupported without a projectId (no request made)", async () => {
+    let called = false;
+    const fetchImpl = mockFetch({ status: 200, body: {} }, () => {
+      called = true;
+    });
+    const result = await fetchGeminiReset({ token, fetchImpl, now: NOW });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/projectId/i);
+    expect(called).toBe(false);
+  });
+
+  it("reports a clear error on 403", async () => {
+    const result = await fetchGeminiReset({
+      token,
+      projectId: "p",
+      fetchImpl: mockFetch({ status: 403 }),
+      now: NOW,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/401\/403/);
+  });
+
+  it("parses buckets independently of the client", () => {
+    expect(geminiResetFromBody({ buckets: [] })).toBeNull();
+    expect(geminiResetFromBody({ buckets: [{ resetTime: "2026-01-01T00:00:00Z" }] })?.source).toBe("body");
+    expect(geminiResetFromBody({})).toBeNull();
   });
 });

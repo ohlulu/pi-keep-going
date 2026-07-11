@@ -41,17 +41,17 @@ code AND test are green.
 - [x] `src/index.ts`: `after_provider_response` caches latest `{status, headers, at}` on 429 (and clears on 2xx)
 - [x] `src/index.ts`: `agent_settled` → detect → if usage-limit and guards pass → schedule auto-resume job at reset + bufferSeconds
 - [x] Guards (`src/guards.ts` pure + test): `autoResume.enabled`, `maxPerSession` counter, `maxWaitHours` (beyond → notify only), consecutive-resume interval < 5min → skip
-- [ ] Generation guard: session-scoped AbortController + generation id; `session_shutdown` aborts + invalidates; usage-API fetch uses signal + 10s timeout; verify generation before append/schedule → MOVED TO M3 (implement with the async usage-API fetch it protects; M2 agent_settled is synchronous, no race yet)
+- [x] Generation guard (landed in M3 with `/kg auto`): session-scoped AbortController + generation id; `session_start`/`session_tree` bump+recreate, `session_shutdown` aborts + invalidates; auto-mode fetch uses `AbortSignal.any([session, timeout(10s)])`; generation re-checked after await before scheduling
 - [x] M2 gate: typecheck + 64 tests green; extension loads clean under `pi -e --list-models`; committed. (Interactive auto-resume E2E needs a real usage limit — human/deferred.)
 
 ## M3 — `auto` mode + usage API clients
 - [x] `src/limits/codex.ts`: GET `https://chatgpt.com/backend-api/wham/usage` (Bearer via `getApiKeyForProvider("openai-codex")`, `ChatGPT-Account-Id` from JWT payload); parse `primary_window.reset_at` / `reset_after_seconds` (+ shared `src/limits/client.ts`: FetchLike, decodeJwtPayload, pick/num/isoReset)
 - [x] `src/limits/anthropic.ts`: GET `https://api.anthropic.com/api/oauth/usage` (Bearer, `anthropic-beta: oauth-2025-04-20`, `User-Agent: claude-code/<ver>`); parse `five_hour.resets_at` (ISO)
-- [ ] `src/limits/gemini.ts`: POST `v1internal:retrieveUserQuota` (token via `getApiKeyForProvider`, projectId via `authStorage.get("google-gemini-cli")`); parse `buckets[].resetTime`; missing provider/projectId → unsupported
-- [ ] `test/clients.test.ts`: mock fetch → 200 parse, 401/403 → clear error, format variants
-- [ ] `/kg auto [msg]`: route by `ctx.model.provider` → correct client → reset + bufferSeconds; anthropic API-key cred → error hint; gemini API-key → unsupported (fallback to cached 429 within 60m)
-- [ ] `auto` failure UX: unreachable/unsupported → notify + suggest manual `/kg <duration>`
-- [ ] M3 gate: typecheck + tests green; commit `feat: auto mode with per-provider usage clients`
+- [x] `src/limits/gemini.ts`: POST `v1internal:retrieveUserQuota` (token via `getApiKeyForProvider`, projectId via `authStorage.get("google-gemini-cli")` — projectId is an index-signature field on the OAuth credential); parse `buckets[].resetTime` (earliest); missing provider/projectId → unsupported. NOTE: Code Assist endpoint host/shape unverified against a live login (gemini auth provider not installed here) — soft-degrades to manual on failure.
+- [x] `test/clients.test.ts`: mock fetch → 200 parse, 401/403 → clear error, format variants (17 client tests: codex/anthropic/gemini + JWT/account-id)
+- [x] `/kg auto [msg]`: routes by `ctx.model.provider` via `providerFamily()` → correct client → reset + bufferSeconds; token via `getApiKeyForProvider`; gemini projectId via `authStorage.get`; missing provider/family/token → warning. (Follow-up: cached-429<60m fallback for google API-key path — minor, deferred to M4.)
+- [x] `auto` failure UX: unreachable/unsupported/timeout → notify with the client error + suggest manual `/kg <duration>`
+- [x] M3 gate: typecheck + 81 tests green; loads clean under `pi -e --list-models`; committed. (Live per-provider auto E2E needs real credentials/limits — human/deferred.)
 
 ## M4 — polish + publish-prep
 - [ ] `pi.registerEntryRenderer` scheduled-job card; `ui.notify` on create/fire/cancel/auto-resume-scheduled

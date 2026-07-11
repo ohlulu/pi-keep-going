@@ -13,8 +13,12 @@ import {
 import { renderWidgetLines } from "./widget";
 import { humanizeDuration } from "./duration";
 import { parseKgCommand } from "./command";
-import { detectUsageLimit, type Cached429 } from "./limits/detect";
+import { detectUsageLimit, providerFamily, type Cached429, type ProviderFamily } from "./limits/detect";
 import { decideAutoResume, type AutoResumeState } from "./guards";
+import { errText, type UsageResult } from "./limits/client";
+import { fetchCodexReset } from "./limits/codex";
+import { fetchAnthropicReset } from "./limits/anthropic";
+import { fetchGeminiReset } from "./limits/gemini";
 import {
   loadSettings,
   defaultSettingsIO,
@@ -38,6 +42,17 @@ export default function (pi: ExtensionAPI): void {
   let settings: KeepGoingSettings = DEFAULT_SETTINGS;
   let cached429: Cached429 | null = null;
   let autoResume: AutoResumeState = { count: 0, lastResumeAt: null };
+  // Generation guard: a per-session id + AbortController so a late usage-API
+  // fetch cannot write into a session that was replaced (/new, /resume, fork)
+  // or torn down while it was in flight.
+  let generation = 0;
+  let sessionAbort: AbortController | null = null;
+
+  const AUTO_FETCH_TIMEOUT_MS = 10_000;
+  function autoSignal(): AbortSignal {
+    const timeout = AbortSignal.timeout(AUTO_FETCH_TIMEOUT_MS);
+    return sessionAbort ? AbortSignal.any([sessionAbort.signal, timeout]) : timeout;
+  }
 
   const remaining = (fireAt: number): string =>
     humanizeDuration(Math.max(0, Math.ceil((fireAt - Date.now()) / 1000)));
@@ -83,6 +98,9 @@ export default function (pi: ExtensionAPI): void {
     settings = loadConfig(sessionCtx);
     cached429 = null;
     autoResume = { count: 0, lastResumeAt: null };
+    generation += 1;
+    sessionAbort?.abort();
+    sessionAbort = new AbortController();
     scheduler?.stop();
     scheduler = createScheduler();
     scheduler.load(rebuildFromBranch(sessionCtx.sessionManager));
@@ -97,6 +115,9 @@ export default function (pi: ExtensionAPI): void {
     scheduler = null;
     ctx = null;
     cached429 = null;
+    generation += 1;
+    sessionAbort?.abort();
+    sessionAbort = null;
   });
 
   // Cache the most recent 429 (for reset-time headers); clear it on any success.
@@ -186,12 +207,42 @@ export default function (pi: ExtensionAPI): void {
         c.ui.notify(command.reason, "error");
         return;
 
-      case "auto":
+      case "auto": {
+        const provider = c.model?.provider;
+        const family = provider ? providerFamily(provider) : null;
+        if (!provider || !family) {
+          c.ui.notify(
+            "Auto mode isn't supported for the current provider. Use /kg <duration> instead.",
+            "warning",
+          );
+          return;
+        }
+        const token = await c.modelRegistry.getApiKeyForProvider(provider);
+        if (!token) {
+          c.ui.notify(`No credential available for ${provider}. Use /kg <duration> instead.`, "warning");
+          return;
+        }
+        const gen = generation;
+        const now = Date.now();
+        let result: UsageResult;
+        try {
+          result = await resolveAutoReset(c, provider, family, token, autoSignal(), now);
+        } catch (e) {
+          result = { ok: false, error: errText(e) };
+        }
+        if (gen !== generation) return; // session was replaced while awaiting the fetch
+        if (!result.ok) {
+          c.ui.notify(`Auto mode failed: ${result.error} Use /kg <duration> to schedule manually.`, "warning");
+          return;
+        }
+        const fireAt = result.reset.at.getTime() + settings.autoResume.bufferSeconds * 1000;
+        const job = sched.add({ fireAt, message: command.message, kind: "auto" });
         c.ui.notify(
-          "/kg auto is not available yet (coming in M3). Specify a duration, e.g. /kg 40m.",
-          "warning",
+          `Auto: usage resets ~${clock(result.reset.at.getTime())}; sending "${job.message}" at ${clock(fireAt)}.`,
+          "info",
         );
         return;
+      }
 
       case "list": {
         const jobs = sched.list();
@@ -241,6 +292,23 @@ export default function (pi: ExtensionAPI): void {
         return;
       }
     }
+  }
+
+  async function resolveAutoReset(
+    c: ExtensionContext,
+    provider: string,
+    family: ProviderFamily,
+    token: string,
+    signal: AbortSignal,
+    now: number,
+  ): Promise<UsageResult> {
+    if (family === "codex") return fetchCodexReset({ token, signal, now });
+    if (family === "anthropic") return fetchAnthropicReset({ token, signal, now });
+    // gemini: projectId is an index-signature field on the OAuth credential.
+    const cred = c.modelRegistry.authStorage.get(provider);
+    const raw = cred && cred.type === "oauth" ? (cred as Record<string, unknown>).projectId : undefined;
+    const projectId = typeof raw === "string" ? raw : undefined;
+    return fetchGeminiReset({ token, projectId, signal, now });
   }
 
   function lastAssistantError(

@@ -10,7 +10,7 @@ export interface ResetInfo {
   window?: string;
 }
 
-export type JobKind = "manual" | "auto-resume";
+export type JobKind = "manual" | "auto" | "auto-resume";
 
 export type JobState = "created" | "cancelled" | "fired";
 
