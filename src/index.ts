@@ -1,6 +1,7 @@
 import type {
   ExtensionAPI,
   ExtensionContext,
+  SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 import { Scheduler } from "./scheduler";
 import {
@@ -12,23 +13,39 @@ import {
 import { renderWidgetLines } from "./widget";
 import { humanizeDuration } from "./duration";
 import { parseKgCommand } from "./command";
+import { detectUsageLimit, type Cached429 } from "./limits/detect";
+import { decideAutoResume, type AutoResumeState } from "./guards";
+import {
+  loadSettings,
+  defaultSettingsIO,
+  globalSettingsPath,
+  projectSettingsPath,
+  DEFAULT_SETTINGS,
+  type KeepGoingSettings,
+} from "./settings";
 
 /**
- * pi-keep-going — thin adapter wiring the pure scheduler/persist/widget modules
- * to a live Pi session. The `/kg` command schedules one-shot follow-up messages;
- * jobs are rebuilt from the current branch on session start and tree navigation.
+ * pi-keep-going — thin adapter wiring the pure scheduler/detect/guards/settings
+ * modules to a live Pi session. The `/kg` command schedules one-shot follow-ups;
+ * on a settled usage-limit error the extension auto-resumes at the reset time.
  */
 
 const WIDGET_ID = "keep-going";
-const DEFAULT_MESSAGE = "keep going";
-const COMPLETIONS = ["auto", "list", "cancel", "10m", "30m", "1h"];
 
 export default function (pi: ExtensionAPI): void {
   let ctx: ExtensionContext | null = null;
   let scheduler: Scheduler | null = null;
+  let settings: KeepGoingSettings = DEFAULT_SETTINGS;
+  let cached429: Cached429 | null = null;
+  let autoResume: AutoResumeState = { count: 0, lastResumeAt: null };
 
   const remaining = (fireAt: number): string =>
     humanizeDuration(Math.max(0, Math.ceil((fireAt - Date.now()) / 1000)));
+
+  const clock = (fireAt: number): string => {
+    const d = new Date(fireAt);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
 
   function refreshWidget(): void {
     if (!ctx || !scheduler) return;
@@ -53,8 +70,19 @@ export default function (pi: ExtensionAPI): void {
     });
   }
 
+  function loadConfig(sessionCtx: ExtensionContext): KeepGoingSettings {
+    return loadSettings({
+      io: defaultSettingsIO(),
+      globalPath: globalSettingsPath(),
+      projectPath: sessionCtx.isProjectTrusted() ? projectSettingsPath(sessionCtx.cwd) : null,
+    });
+  }
+
   function setup(sessionCtx: ExtensionContext): void {
     ctx = sessionCtx;
+    settings = loadConfig(sessionCtx);
+    cached429 = null;
+    autoResume = { count: 0, lastResumeAt: null };
     scheduler?.stop();
     scheduler = createScheduler();
     scheduler.load(rebuildFromBranch(sessionCtx.sessionManager));
@@ -68,15 +96,67 @@ export default function (pi: ExtensionAPI): void {
     scheduler?.stop();
     scheduler = null;
     ctx = null;
+    cached429 = null;
+  });
+
+  // Cache the most recent 429 (for reset-time headers); clear it on any success.
+  pi.on("after_provider_response", (event) => {
+    if (event.status === 429) {
+      cached429 = { status: event.status, headers: event.headers, at: Date.now() };
+    } else if (event.status >= 200 && event.status < 300) {
+      cached429 = null;
+    }
+  });
+
+  // On a settled usage-limit error, decide whether to auto-resume.
+  pi.on("agent_settled", (_event, settledCtx) => {
+    ctx = settledCtx;
+    if (!scheduler) return;
+
+    const error = lastAssistantError(settledCtx.sessionManager.getBranch());
+    if (!error) return;
+
+    const detection = detectUsageLimit({
+      provider: settledCtx.model?.provider ?? "",
+      stopReason: error.stopReason,
+      errorMessage: error.errorMessage,
+      cached429,
+      now: Date.now(),
+    });
+    if (!detection) return;
+
+    const decision = decideAutoResume({
+      reset: detection.reset,
+      settings: settings.autoResume,
+      state: autoResume,
+      now: Date.now(),
+    });
+
+    if (decision.action === "schedule") {
+      scheduler.add({
+        fireAt: decision.fireAt,
+        message: settings.autoResume.message,
+        kind: "auto-resume",
+      });
+      autoResume = { count: autoResume.count + 1, lastResumeAt: Date.now() };
+      settledCtx.ui.notify(
+        `Usage limit reached (${detection.provider}) — auto-resuming at ${clock(decision.fireAt)}.`,
+        "info",
+      );
+    } else if (decision.action === "notify") {
+      settledCtx.ui.notify(decision.reason, "warning");
+    }
+    // "skip" is intentionally silent.
   });
 
   pi.registerCommand("kg", {
     description:
       "Schedule a one-shot follow-up message (/kg 40m keep going). Also: /kg list, /kg cancel, /kg auto.",
     getArgumentCompletions: (prefix: string) => {
-      const items = COMPLETIONS.filter((option) => option.startsWith(prefix)).map(
-        (value) => ({ value, label: value }),
-      );
+      const options = ["auto", "list", "cancel", "10m", "30m", "1h"];
+      const items = options
+        .filter((option) => option.startsWith(prefix))
+        .map((value) => ({ value, label: value }));
       return items.length > 0 ? items : null;
     },
     handler: async (args, commandCtx) => {
@@ -92,7 +172,7 @@ export default function (pi: ExtensionAPI): void {
   async function runCommand(args: string, c: ExtensionContext): Promise<void> {
     const sched = scheduler;
     if (!sched) return;
-    const command = parseKgCommand(args, DEFAULT_MESSAGE);
+    const command = parseKgCommand(args, settings.defaultMessage);
 
     switch (command.kind) {
       case "help":
@@ -161,5 +241,17 @@ export default function (pi: ExtensionAPI): void {
         return;
       }
     }
+  }
+
+  function lastAssistantError(
+    branch: SessionEntry[],
+  ): { stopReason?: string; errorMessage?: string } | null {
+    for (let i = branch.length - 1; i >= 0; i -= 1) {
+      const entry = branch[i];
+      if (entry.type === "message" && entry.message.role === "assistant") {
+        return { stopReason: entry.message.stopReason, errorMessage: entry.message.errorMessage };
+      }
+    }
+    return null;
   }
 }

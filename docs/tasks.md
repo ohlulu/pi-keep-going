@@ -38,11 +38,11 @@ code AND test are green.
 - [x] `test/detect.test.ts`: real-shape fixtures for all three providers (from plan.md §2.2) → correct ResetInfo; non-usage-limit errors → null
 - [x] `src/settings.ts`: load `~/.pi/agent/keep-going.json` (global) + project `<cwd>/<CONFIG_DIR_NAME>/keep-going.json` ONLY when `ctx.isProjectTrusted()`; defaults: autoResume.enabled=true, message "continue", bufferSeconds 90, maxPerSession 5, maxWaitHours 24
 - [x] `test/settings.test.ts`: default load; project override honored only when trusted (mock `ctx.isProjectTrusted`)
-- [ ] `src/index.ts`: `after_provider_response` caches latest `{status, headers, at}` on 429
-- [ ] `src/index.ts`: `agent_settled` → detect → if usage-limit and guards pass → schedule auto-resume job at reset + bufferSeconds
-- [ ] Guards: `autoResume.enabled`, `maxPerSession` counter, `maxWaitHours` (beyond → notify only), consecutive-resume interval < 5min → stop
-- [ ] Generation guard: session-scoped AbortController + generation id; `session_shutdown` aborts + invalidates; usage-API fetch uses signal + 10s timeout; verify generation before append/schedule
-- [ ] M2 gate: typecheck + tests green; commit `feat: usage-limit auto-resume with trust-gated settings`
+- [x] `src/index.ts`: `after_provider_response` caches latest `{status, headers, at}` on 429 (and clears on 2xx)
+- [x] `src/index.ts`: `agent_settled` → detect → if usage-limit and guards pass → schedule auto-resume job at reset + bufferSeconds
+- [x] Guards (`src/guards.ts` pure + test): `autoResume.enabled`, `maxPerSession` counter, `maxWaitHours` (beyond → notify only), consecutive-resume interval < 5min → skip
+- [ ] Generation guard: session-scoped AbortController + generation id; `session_shutdown` aborts + invalidates; usage-API fetch uses signal + 10s timeout; verify generation before append/schedule → MOVED TO M3 (implement with the async usage-API fetch it protects; M2 agent_settled is synchronous, no race yet)
+- [x] M2 gate: typecheck + 64 tests green; extension loads clean under `pi -e --list-models`; committed. (Interactive auto-resume E2E needs a real usage limit — human/deferred.)
 
 ## M3 — `auto` mode + usage API clients
 - [ ] `src/limits/codex.ts`: GET `https://chatgpt.com/backend-api/wham/usage` (Bearer via `getApiKeyForProvider("openai-codex")`, `ChatGPT-Account-Id` from JWT payload); parse `primary_window.reset_at` / `reset_after_seconds`
