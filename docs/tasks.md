@@ -58,8 +58,8 @@ code AND test are green.
 - [x] Same-session dual-process advisory lease (`<agentDir>/keep-going/locks/<sessionId>.lock`, pid+updatedAt, 90s stale reclaim); non-owner read-only via scheduler `canFire` gate. Pure `evaluateLease`/`refreshLease` + 10 tests. Session id via `sessionManager.getSessionId()`.
 - [x] Finalize dependency classification: `@earendil-works/pi-coding-agent` = peerDependency (host-provided) + devDependency (local tsc/vitest); removed unused `typebox` dep and direct `pi-ai` devDep; added `engines.node >=20.3.0` (AbortSignal.any) + `files`. Documented in README.
 - [x] README: install, `/kg` usage table, auto-resume, provider support matrix, settings schema, safety (generation guard + lease), dev/peer-dep note.
-- [ ] Backfill `docs/plan.md` as canonical spec (Status: Implemented)
-- [ ] M4 gate: typecheck + tests green; commit `docs: README + publish prep`
+- [x] Backfill `docs/plan.md` as canonical spec (Status: Implemented; implementation summary + deferred + pre-publish caveats in the header)
+- [x] M4 gate: typecheck 0 + 92 tests green + `pi -e --list-models` loads clean; committed.
 
 ## Notes / Progress Log
 (Append observations, deviations, and manual-verify results here.)

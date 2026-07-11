@@ -8,9 +8,14 @@ read_when:
 
 # pi-keep-going — 一次性排程 + Usage-Limit 自動續跑 Extension 計劃書
 
-**Status**: In Progress（Ralph 執行中）
+**Status**: Implemented（M1–M4 核心完成；此文件為 canonical spec）
 **Date**: 2026-07-11
 **前置研究**: [research.md](./research.md)
+**進度來源**: [tasks.md](./tasks.md)（逐項勾選 + 偏離註記）
+
+> **實作摘要（2026-07-11）**：`/kg` 一次性排程、usage-limit 自動續跑（三家偵測器 + usage API client）、generation guard、trust-gated settings、單一觸發 advisory lease 皆已落地，92 tests 綠、`pi -e` 載入乾淨。
+> **延後（非阻塞，已記於 tasks.md）**：`registerEntryRenderer` 卡片（widget 已覆蓋可見性，需互動 TUI + pi-tui peer 解析才驗證）；google API-key 路徑的 cached-429<60m fallback（次要）。
+> **發布前必辦**：Gemini `retrieveUserQuota` endpoint host/shape 需對真實 `google-gemini-cli` 登入實測（此環境無法驗證）。
 
 ## Locked Decisions (v1)
 
