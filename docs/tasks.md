@@ -27,10 +27,10 @@ code AND test are green.
 - [x] `test/persist.test.ts`: reducer over synthetic branch entries (created→cancelled, created→fired, created-only, out-of-order)
 - [x] `src/scheduler.ts`: 30s tick comparing `Date.now() >= fireAt`; job CRUD; on fire → `isIdle` guard → `pi.sendUserMessage(msg, { deliverAs: "followUp" })` → mark fired
 - [x] `src/widget.ts`: countdown widget via `ctx.ui.setWidget` (nearest job + "(+N more)"); hide when none
-- [ ] `src/index.ts`: register `/kg` command (`<duration|auto|list|cancel> [message]`) with `getArgumentCompletions`; wire `session_start` + `session_tree` (rebuild) and `session_shutdown` (clear timers)
-- [ ] `/kg <duration> [msg]` creates job (default msg "keep going"); `list` shows pending with remaining time; `cancel` removes (ui.select when multiple)
-- [ ] session resume/tree rebuild: expired-but-unfired jobs fire immediately with a note
-- [ ] M1 gate: typecheck + tests green; manual `pi -e ./src/index.ts` → `/kg 1m test` fires after ~60s; commit `feat: core /kg one-shot scheduling`
+- [x] `src/index.ts`: register `/kg` command (`<duration|auto|list|cancel> [message]`) with `getArgumentCompletions`; wire `session_start` + `session_tree` (rebuild) and `session_shutdown` (clear timers)
+- [x] `/kg <duration> [msg]` creates job (default msg "keep going"); `list` shows pending with remaining time; `cancel` removes (ui.select when multiple)
+- [x] session resume/tree rebuild: expired-but-unfired jobs fire immediately with a note
+- [~] M1 gate: typecheck + 33 tests green; `pi -e --list-models` loads clean; committed. PENDING human interactive check: `pi -e ./src/index.ts` → `/kg 1m test` fires after ~60s (can't drive TUI timer non-interactively)
 
 ## M2 — usage-limit auto-resume
 - [ ] `src/limits/detect.ts`: from last assistant message (stopReason "error" + errorMessage) + cached 429 `{status,headers}` → classify usage-limit per provider → `ResetInfo | null`
@@ -63,3 +63,6 @@ code AND test are green.
 
 ## Notes / Progress Log
 (Append observations, deviations, and manual-verify results here.)
+
+- Iteration 4: M1 core complete (10/11 boxes). `/kg` command + session wiring done; 33 tests green; extension loads clean under `pi -e --list-models`. M1 gate marked `[~]` — interactive 60s fire test needs a human run (TUI timer not drivable non-interactively). Provider facts for M2 detect.ts live in `docs/plan.md` §2.2.
+- API note: `pi` (ExtensionAPI) exposes `sendUserMessage`/`appendEntry` but NOT `isIdle`/`ui`/`sessionManager` — those are on `ctx`. Background timers capture the session `ctx` at `session_start`/`session_tree` and drop it on `session_shutdown`. Do NOT `import` from `@earendil-works/pi-tui` (not hoisted); return `{value,label}` for completions and rely on transitive types.
