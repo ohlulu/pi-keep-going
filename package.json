@@ -1,0 +1,36 @@
+{
+  "name": "pi-keep-going",
+  "version": "0.0.0",
+  "description": "Pi extension: one-shot /kg scheduling and usage-limit auto-resume for Anthropic, Codex, and Gemini.",
+  "type": "module",
+  "license": "MIT",
+  "author": "ohlulu",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "scheduler",
+    "usage-limit",
+    "auto-resume"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "typebox": "^1.1.38"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.80.6",
+    "@earendil-works/pi-coding-agent": "^0.80.6",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
