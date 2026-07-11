@@ -33,9 +33,9 @@ code AND test are green.
 - [~] M1 gate: typecheck + 33 tests green; `pi -e --list-models` loads clean; committed. PENDING human interactive check: `pi -e ./src/index.ts` → `/kg 1m test` fires after ~60s (can't drive TUI timer non-interactively)
 
 ## M2 — usage-limit auto-resume
-- [ ] `src/limits/detect.ts`: from last assistant message (stopReason "error" + errorMessage) + cached 429 `{status,headers}` → classify usage-limit per provider → `ResetInfo | null`
-- [ ] Provider classifiers: codex (`/hit your ChatGPT usage limit/i`, `~(\d+) min`), anthropic (429 + `rate.?limit`, unified-reset header epoch/ISO tolerant, `retry-after`), gemini (`RESOURCE_EXHAUSTED`/`quota`, `quotaResetTimeStamp`, `retryDelay` "600s", `reset after (…)`, `retry in (…)s`)
-- [ ] `test/detect.test.ts`: real-shape fixtures for all three providers (from plan.md §2.2) → correct ResetInfo; non-usage-limit errors → null
+- [x] `src/limits/detect.ts`: from last assistant message (stopReason "error" + errorMessage) + cached 429 `{status,headers}` → classify usage-limit per provider → `ResetInfo | null` (returns `UsageLimit | null`; `{reset:null}` = limit hit, time unknown)
+- [x] Provider classifiers: codex (`/hit your ChatGPT usage limit/i`, `~(\d+) min`), anthropic (429 + `rate.?limit`, unified-reset header epoch/ISO tolerant, `retry-after`), gemini (`RESOURCE_EXHAUSTED`/`quota`, `quotaResetTimeStamp`, `retryDelay` "600s", `reset after (…)`, `retry in (…)s`)
+- [x] `test/detect.test.ts`: real-shape fixtures for all three providers (from plan.md §2.2) → correct ResetInfo; non-usage-limit errors → null
 - [ ] `src/settings.ts`: load `~/.pi/agent/keep-going.json` (global) + project `<cwd>/<CONFIG_DIR_NAME>/keep-going.json` ONLY when `ctx.isProjectTrusted()`; defaults: autoResume.enabled=true, message "continue", bufferSeconds 90, maxPerSession 5, maxWaitHours 24
 - [ ] `test/settings.test.ts`: default load; project override honored only when trusted (mock `ctx.isProjectTrusted`)
 - [ ] `src/index.ts`: `after_provider_response` caches latest `{status, headers, at}` on 429
