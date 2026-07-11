@@ -25,8 +25,8 @@ code AND test are green.
 - [x] `src/limits/types.ts`: `ResetInfo { at: Date; source: "header"|"body"|"usage-api"|"manual"; window?: string }`; `Job { id; fireAt; message; kind: "manual"|"auto-resume"; state: "created"|"cancelled"|"fired" }`
 - [x] `src/persist.ts`: appendEntry job events; `rebuildFromBranch(ctx)` reduces `ctx.sessionManager.getBranch()` → live jobs (created && not cancelled/fired)
 - [x] `test/persist.test.ts`: reducer over synthetic branch entries (created→cancelled, created→fired, created-only, out-of-order)
-- [ ] `src/scheduler.ts`: 30s tick comparing `Date.now() >= fireAt`; job CRUD; on fire → `isIdle` guard → `pi.sendUserMessage(msg, { deliverAs: "followUp" })` → mark fired
-- [ ] `src/widget.ts`: countdown widget via `ctx.ui.setWidget` (nearest job + "(+N more)"); hide when none
+- [x] `src/scheduler.ts`: 30s tick comparing `Date.now() >= fireAt`; job CRUD; on fire → `isIdle` guard → `pi.sendUserMessage(msg, { deliverAs: "followUp" })` → mark fired
+- [x] `src/widget.ts`: countdown widget via `ctx.ui.setWidget` (nearest job + "(+N more)"); hide when none
 - [ ] `src/index.ts`: register `/kg` command (`<duration|auto|list|cancel> [message]`) with `getArgumentCompletions`; wire `session_start` + `session_tree` (rebuild) and `session_shutdown` (clear timers)
 - [ ] `/kg <duration> [msg]` creates job (default msg "keep going"); `list` shows pending with remaining time; `cancel` removes (ui.select when multiple)
 - [ ] session resume/tree rebuild: expired-but-unfired jobs fire immediately with a note
