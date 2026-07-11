@@ -45,8 +45,8 @@ code AND test are green.
 - [x] M2 gate: typecheck + 64 tests green; extension loads clean under `pi -e --list-models`; committed. (Interactive auto-resume E2E needs a real usage limit — human/deferred.)
 
 ## M3 — `auto` mode + usage API clients
-- [ ] `src/limits/codex.ts`: GET `https://chatgpt.com/backend-api/wham/usage` (Bearer via `getApiKeyForProvider("openai-codex")`, `ChatGPT-Account-Id` from JWT payload); parse `primary_window.reset_at` / `reset_after_seconds`
-- [ ] `src/limits/anthropic.ts`: GET `https://api.anthropic.com/api/oauth/usage` (Bearer, `anthropic-beta: oauth-2025-04-20`, `User-Agent: claude-code/<ver>`); parse `five_hour.resets_at` (ISO)
+- [x] `src/limits/codex.ts`: GET `https://chatgpt.com/backend-api/wham/usage` (Bearer via `getApiKeyForProvider("openai-codex")`, `ChatGPT-Account-Id` from JWT payload); parse `primary_window.reset_at` / `reset_after_seconds` (+ shared `src/limits/client.ts`: FetchLike, decodeJwtPayload, pick/num/isoReset)
+- [x] `src/limits/anthropic.ts`: GET `https://api.anthropic.com/api/oauth/usage` (Bearer, `anthropic-beta: oauth-2025-04-20`, `User-Agent: claude-code/<ver>`); parse `five_hour.resets_at` (ISO)
 - [ ] `src/limits/gemini.ts`: POST `v1internal:retrieveUserQuota` (token via `getApiKeyForProvider`, projectId via `authStorage.get("google-gemini-cli")`); parse `buckets[].resetTime`; missing provider/projectId → unsupported
 - [ ] `test/clients.test.ts`: mock fetch → 200 parse, 401/403 → clear error, format variants
 - [ ] `/kg auto [msg]`: route by `ctx.model.provider` → correct client → reset + bufferSeconds; anthropic API-key cred → error hint; gemini API-key → unsupported (fallback to cached 429 within 60m)
