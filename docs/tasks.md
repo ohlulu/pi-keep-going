@@ -20,8 +20,8 @@ code AND test are green.
 - All state via `pi.appendEntry` (TUI-only). The only thing entering LLM context is the final sent user message.
 
 ## M1 — Core one-shot scheduling
-- [ ] `src/duration.ts`: parse `40m` / `2h30m` / `90s` / `1h30m20s` → seconds; reject invalid; `humanize(seconds)` → "38m 12s"
-- [ ] `test/duration.test.ts`: valid combos, invalid inputs, humanize round-trip
+- [x] `src/duration.ts`: parse `40m` / `2h30m` / `90s` / `1h30m20s` → seconds; reject invalid; `humanize(seconds)` → "38m 12s"
+- [x] `test/duration.test.ts`: valid combos, invalid inputs, humanize round-trip
 - [ ] `src/limits/types.ts`: `ResetInfo { at: Date; source: "header"|"body"|"usage-api"|"manual"; window?: string }`; `Job { id; fireAt; message; kind: "manual"|"auto-resume"; state: "created"|"cancelled"|"fired" }`
 - [ ] `src/persist.ts`: appendEntry job events; `rebuildFromBranch(ctx)` reduces `ctx.sessionManager.getBranch()` → live jobs (created && not cancelled/fired)
 - [ ] `test/persist.test.ts`: reducer over synthetic branch entries (created→cancelled, created→fired, created-only, out-of-order)
