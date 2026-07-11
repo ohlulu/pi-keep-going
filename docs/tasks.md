@@ -54,10 +54,10 @@ code AND test are green.
 - [x] M3 gate: typecheck + 81 tests green; loads clean under `pi -e --list-models`; committed. (Live per-provider auto E2E needs real credentials/limits — human/deferred.)
 
 ## M4 — polish + publish-prep
-- [ ] `pi.registerEntryRenderer` scheduled-job card; `ui.notify` on create/fire/cancel/auto-resume-scheduled
-- [ ] Same-session dual-process advisory lease (`~/.pi/agent/keep-going/locks/<sessionId>.lock`, PID+mtime, stale reclaim); non-owner read-only
-- [ ] Finalize dependency classification (peer vs deps vs devDeps) for `pi install` correctness; document in README
-- [ ] README: install, `/kg` usage, settings, provider support matrix, known limitations
+- [~] `pi.registerEntryRenderer` scheduled-job card — DEFERRED to a post-Ralph interactive session. Rationale: `EntryRenderer` must return a pi-tui `Component`, which needs an instanceof-compatible `@earendil-works/pi-tui` across the host boundary (peer semantics), and renderers only fire in interactive TUI (not verifiable via `--list-models`). The existing `setWidget` list already surfaces scheduled jobs + `ui.notify` fires on create/auto-resume, so this is additive polish, not a gap. Tune pi-tui resolution empirically when a human can see it render.
+- [x] Same-session dual-process advisory lease (`<agentDir>/keep-going/locks/<sessionId>.lock`, pid+updatedAt, 90s stale reclaim); non-owner read-only via scheduler `canFire` gate. Pure `evaluateLease`/`refreshLease` + 10 tests. Session id via `sessionManager.getSessionId()`.
+- [x] Finalize dependency classification: `@earendil-works/pi-coding-agent` = peerDependency (host-provided) + devDependency (local tsc/vitest); removed unused `typebox` dep and direct `pi-ai` devDep; added `engines.node >=20.3.0` (AbortSignal.any) + `files`. Documented in README.
+- [x] README: install, `/kg` usage table, auto-resume, provider support matrix, settings schema, safety (generation guard + lease), dev/peer-dep note.
 - [ ] Backfill `docs/plan.md` as canonical spec (Status: Implemented)
 - [ ] M4 gate: typecheck + tests green; commit `docs: README + publish prep`
 

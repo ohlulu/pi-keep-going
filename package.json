@@ -18,16 +18,22 @@
       "./src/index.ts"
     ]
   },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.3.0"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "typebox": "^1.1.38"
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.80.0"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.80.6",
     "@earendil-works/pi-coding-agent": "^0.80.6",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0",
