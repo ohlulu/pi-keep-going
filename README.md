@@ -42,6 +42,9 @@ When a turn ends on a usage-limit error, the extension:
 1. Classifies the error per provider (from the assistant error message plus any
    cached `429` response headers).
 2. Resolves the reset time (headers → embedded time → provider usage API).
+   The usage-API step is load-bearing for Anthropic: the SDK throws on 429
+   before pi can observe the response, so the unified-reset headers are never
+   cached and the error body carries no reset time.
 3. Schedules a continuation message at `reset + bufferSeconds`, guarded by the
    settings below.
 

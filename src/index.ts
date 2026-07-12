@@ -14,6 +14,7 @@ import { renderWidgetLines } from "./widget";
 import { humanizeDuration } from "./duration";
 import { parseKgCommand } from "./command";
 import { detectUsageLimit, providerFamily, type Cached429, type ProviderFamily } from "./limits/detect";
+import type { ResetInfo } from "./limits/types";
 import { decideAutoResume, type AutoResumeState } from "./guards";
 import { errText, type UsageResult } from "./limits/client";
 import { fetchCodexReset } from "./limits/codex";
@@ -155,7 +156,7 @@ export default function (pi: ExtensionAPI): void {
   });
 
   // On a settled usage-limit error, decide whether to auto-resume.
-  pi.on("agent_settled", (_event, settledCtx) => {
+  pi.on("agent_settled", async (_event, settledCtx) => {
     ctx = settledCtx;
     if (!scheduler) return;
 
@@ -171,8 +172,20 @@ export default function (pi: ExtensionAPI): void {
     });
     if (!detection) return;
 
+    // Passive channels can come up empty: provider SDKs throw on 429 before
+    // pi-ai's onResponse runs, so `after_provider_response` never fires with
+    // 429 headers (cached429 stays null), and e.g. Anthropic's rate_limit_error
+    // body carries no reset time. Fall back to the provider usage API before
+    // giving up on auto-resume.
+    let reset = detection.reset;
+    if (!reset) {
+      const gen = generation;
+      reset = await fetchResetViaUsageApi(settledCtx);
+      if (gen !== generation || !scheduler) return; // session replaced meanwhile
+    }
+
     const decision = decideAutoResume({
-      reset: detection.reset,
+      reset,
       settings: settings.autoResume,
       state: autoResume,
       now: Date.now(),
@@ -316,6 +329,21 @@ export default function (pi: ExtensionAPI): void {
         );
         return;
       }
+    }
+  }
+
+  /** Best-effort usage-API lookup for auto-resume; null on any failure. */
+  async function fetchResetViaUsageApi(c: ExtensionContext): Promise<ResetInfo | null> {
+    const provider = c.model?.provider;
+    const family = provider ? providerFamily(provider) : null;
+    if (!provider || !family) return null;
+    try {
+      const token = await c.modelRegistry.getApiKeyForProvider(provider);
+      if (!token) return null;
+      const result = await resolveAutoReset(c, provider, family, token, autoSignal(), Date.now());
+      return result.ok ? result.reset : null;
+    } catch {
+      return null;
     }
   }
 
