@@ -28,7 +28,7 @@ import {
   DEFAULT_SETTINGS,
   type KeepGoingSettings,
 } from "./settings";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, readStoredCredential } from "@earendil-works/pi-coding-agent";
 import { defaultLeaseIO, leasePath, refreshLease, type LeaseRole } from "./lease";
 
 /**
@@ -358,7 +358,8 @@ export default function (pi: ExtensionAPI): void {
     if (family === "codex") return fetchCodexReset({ token, signal, now });
     if (family === "anthropic") return fetchAnthropicReset({ token, signal, now });
     // gemini: projectId is an index-signature field on the OAuth credential.
-    const cred = c.modelRegistry.authStorage.get(provider);
+    // One-off read-only lookup (no refresh); modelRegistry.authStorage was removed in pi 0.80.8.
+    const cred = readStoredCredential(provider);
     const raw = cred && cred.type === "oauth" ? (cred as Record<string, unknown>).projectId : undefined;
     const projectId = typeof raw === "string" ? raw : undefined;
     return fetchGeminiReset({ token, projectId, signal, now });

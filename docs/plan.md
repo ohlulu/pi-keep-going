@@ -124,7 +124,7 @@ pi-keep-going/
 
 1. **Timer 用絕對時間戳 + 週期 tick（30s），不用單發長 `setTimeout`**。Node 的 timer 在系統睡眠時暫停計時，長 setTimeout 醒來後行為不可靠；tick 比對 `Date.now() >= job.fireAt` 跨睡眠正確，且順便驅動 widget 倒數更新。
 2. **送訊息一律走 `pi.sendUserMessage(msg, { deliverAs: "followUp" })`**。斷點防護：fire 前檢查 `ctx.isIdle()`；若 agent 正在跑（使用者手動又開工了），改 queue 為 followUp 自然銜接，不打斷。
-3. **Token 與 credential metadata 分兩條唯讀路徑**：access token 一律走 `ctx.modelRegistry.getApiKeyForProvider()`（pi 自動處理 OAuth refresh）；credential metadata（如 Gemini 的 `projectId`）走公開 export 的 `ctx.modelRegistry.authStorage.get(provider)` 唯讀取得。兩者都不解析 auth.json 檔案、絕不自行 refresh —— 避免 refresh-token rotation 衝突（Codex refresh token 是 single-use，openusage 為此寫了一整套 conflict 處理，我們直接繞開這個坑）。`getApiKeyForProvider()` 只回傳 `string | undefined`，metadata 必須走 authStorage，這是 M3 Gemini quota client 的前提。
+3. **Token 與 credential metadata 分兩條唯讀路徑**：access token 一律走 `ctx.modelRegistry.getApiKeyForProvider()`（pi 自動處理 OAuth refresh）；credential metadata（如 Gemini 的 `projectId`）走公開 export 的 `readStoredCredential(provider)` 一次性唯讀取得（pi 0.80.8 起 `ctx.modelRegistry.authStorage` 已自 extension API 移除）。兩者都絕不自行 refresh —— 避免 refresh-token rotation 衝突（Codex refresh token 是 single-use，openusage 為此寫了一整套 conflict 處理，我們直接繞開這個坑）。`getApiKeyForProvider()` 只回傳 `string | undefined`，metadata 必須走 `readStoredCredential`，這是 M3 Gemini quota client 的前提。
 4. **usage-limit 偵測雙通道**：
    - 通道 A（被動、零成本）：`after_provider_response` 於 429 時快取 `{ status, headers, at }`（僅保留最近一筆）
    - 通道 B（權威）：`agent_settled` 時檢查最後 assistant message `stopReason === "error"`，errorMessage 跑 provider-aware 分類
@@ -198,7 +198,7 @@ agent_settled
 
 1. `openai-codex` → `GET wham/usage` → `primary_window.reset_at ?? now + reset_after_seconds`
 2. `anthropic` → `GET api/oauth/usage` → `five_hour.resets_at`（credential 為 API key 而非 OAuth 時此 API 不可用 → 報錯提示）
-3. `google-gemini-cli` → `POST v1internal:retrieveUserQuota` → `buckets[].resetTime`（M3 再做，M1 先報「Gemini 不支援 auto，請指定時間」）。quota-context 組裝：access token 走 `getApiKeyForProvider("google-gemini-cli")`，`projectId` 走 `authStorage.get("google-gemini-cli")` 的 credential metadata；任一缺失（未裝 provider ext / 無 projectId）→ 明確報「Gemini auto 不可用」並提示手動指定時間。`google`（API key）→ 不支援 auto，但若 60 分鐘內有快取的 429 reset 資訊則採用
+3. `google-gemini-cli` → `POST v1internal:retrieveUserQuota` → `buckets[].resetTime`（M3 再做，M1 先報「Gemini 不支援 auto，請指定時間」）。quota-context 組裝：access token 走 `getApiKeyForProvider("google-gemini-cli")`，`projectId` 走 `readStoredCredential("google-gemini-cli")` 的 credential metadata；任一缺失（未裝 provider ext / 無 projectId）→ 明確報「Gemini auto 不可用」並提示手動指定時間。`google`（API key）→ 不支援 auto，但若 60 分鐘內有快取的 429 reset 資訊則採用
 4. 所有路徑 + `bufferSeconds`
 
 ## 6. 風險與對策
@@ -234,7 +234,7 @@ agent_settled
 ### M3 — `auto` 模式
 - [ ] `codex.ts`：wham/usage client（JWT account-id 解析）
 - [ ] `anthropic.ts`：oauth/usage client
-- [ ] `gemini.ts`：retrieveUserQuota（token via getApiKeyForProvider + projectId via authStorage.get()；任一缺失報不支援）
+- [ ] `gemini.ts`：retrieveUserQuota（token via getApiKeyForProvider + projectId via readStoredCredential()；任一缺失報不支援）
 - [ ] `auto` 路由 + 快取 429 fallback
 
 ### M4 — 打磨與發佈

@@ -15,7 +15,7 @@ code AND test are green.
 - After any code change: run `npm run typecheck` and `npm test` — both must stay green before checking a box.
 - Small commits (Conventional Commits) after each milestone gate passes. Autonomous git is allowed.
 - Never check a box ahead of green code + test.
-- Access token via `ctx.modelRegistry.getApiKeyForProvider(provider)`; credential metadata (projectId) via `ctx.modelRegistry.authStorage.get(provider)`. Never read auth.json directly, never self-refresh.
+- Access token via `ctx.modelRegistry.getApiKeyForProvider(provider)`; credential metadata (projectId) via `readStoredCredential(provider)` (one-off read-only; `ctx.modelRegistry.authStorage` was removed from the extension API in pi 0.80.8). Never self-refresh tokens.
 - Timers: absolute-timestamp + 30s periodic tick (never a single long setTimeout). Guard every fire with `ctx.isIdle()`.
 - All state via `pi.appendEntry` (TUI-only). The only thing entering LLM context is the final sent user message.
 
@@ -47,9 +47,9 @@ code AND test are green.
 ## M3 — `auto` mode + usage API clients
 - [x] `src/limits/codex.ts`: GET `https://chatgpt.com/backend-api/wham/usage` (Bearer via `getApiKeyForProvider("openai-codex")`, `ChatGPT-Account-Id` from JWT payload); parse `primary_window.reset_at` / `reset_after_seconds` (+ shared `src/limits/client.ts`: FetchLike, decodeJwtPayload, pick/num/isoReset)
 - [x] `src/limits/anthropic.ts`: GET `https://api.anthropic.com/api/oauth/usage` (Bearer, `anthropic-beta: oauth-2025-04-20`, `User-Agent: claude-code/<ver>`); parse `five_hour.resets_at` (ISO)
-- [x] `src/limits/gemini.ts`: POST `v1internal:retrieveUserQuota` (token via `getApiKeyForProvider`, projectId via `authStorage.get("google-gemini-cli")` — projectId is an index-signature field on the OAuth credential); parse `buckets[].resetTime` (earliest); missing provider/projectId → unsupported. NOTE: Code Assist endpoint host/shape unverified against a live login (gemini auth provider not installed here) — soft-degrades to manual on failure.
+- [x] `src/limits/gemini.ts`: POST `v1internal:retrieveUserQuota` (token via `getApiKeyForProvider`, projectId via `readStoredCredential("google-gemini-cli")` — projectId is an index-signature field on the OAuth credential; originally `authStorage.get`, migrated after pi 0.80.8 removed it); parse `buckets[].resetTime` (earliest); missing provider/projectId → unsupported. NOTE: Code Assist endpoint host/shape unverified against a live login (gemini auth provider not installed here) — soft-degrades to manual on failure.
 - [x] `test/clients.test.ts`: mock fetch → 200 parse, 401/403 → clear error, format variants (17 client tests: codex/anthropic/gemini + JWT/account-id)
-- [x] `/kg auto [msg]`: routes by `ctx.model.provider` via `providerFamily()` → correct client → reset + bufferSeconds; token via `getApiKeyForProvider`; gemini projectId via `authStorage.get`; missing provider/family/token → warning. (Follow-up: cached-429<60m fallback for google API-key path — minor, deferred to M4.)
+- [x] `/kg auto [msg]`: routes by `ctx.model.provider` via `providerFamily()` → correct client → reset + bufferSeconds; token via `getApiKeyForProvider`; gemini projectId via `readStoredCredential`; missing provider/family/token → warning. (Follow-up: cached-429<60m fallback for google API-key path — minor, deferred to M4.)
 - [x] `auto` failure UX: unreachable/unsupported/timeout → notify with the client error + suggest manual `/kg <duration>`
 - [x] M3 gate: typecheck + 81 tests green; loads clean under `pi -e --list-models`; committed. (Live per-provider auto E2E needs real credentials/limits — human/deferred.)
 

@@ -61,7 +61,6 @@ function makeCtx(notifications: string[]): ExtensionContext {
     model: { provider: "anthropic" },
     modelRegistry: {
       getApiKeyForProvider: async () => "oauth-token",
-      authStorage: { get: () => undefined },
     },
     sessionManager: {
       getSessionId: () => "test-session",
