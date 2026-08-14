@@ -15,9 +15,15 @@ Two capabilities:
 
 ## Install
 
+Not published to npm yet — install from a clone:
+
 ```bash
-pi install npm:pi-keep-going
+git clone <repo> pi-keep-going
+pi install ./pi-keep-going
 ```
+
+A local-path install is added to `~/.pi/agent/settings.json` by reference, not
+copied, so edits in the clone take effect on the next Pi start.
 
 ## `/kg` command
 
