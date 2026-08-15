@@ -7,7 +7,7 @@ code AND test are green.
 - Package / repo name: `pi-keep-going`
 - Primary command: `/kg` (NOT `/schedule` — plan.md examples predate this rename)
 - auto-resume default: ON (`autoResume.enabled: true`)
-- Repo root: `/Users/ohlulu/Developer/ohlulu/pi-keep-going`
+- Repo root: the `pi-keep-going` checkout containing this file
 - Reference: `docs/plan.md` (design + provider facts); prior art: `docs/research.md`
 
 ## How To Work (every iteration)

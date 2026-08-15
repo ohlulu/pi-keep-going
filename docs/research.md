@@ -46,7 +46,7 @@
 
 ### Kept
 - [pi-schedule-prompt (tintinweb)](https://github.com/tintinweb/pi-schedule-prompt) — GitHub repo / README — Pi 生態系最接近的現成排程機制，94★，已驗證 stars/更新時間
-- [Pi extensions.md 本機文件](file:///Users/ohlulu/.local/share/mise/installs/node/22.22.3/lib/node_modules/@earendil-works/pi-coding-agent/dist/../docs/extensions.md) — 官方文件 — `followUp`/`ctx.isIdle()`/`triggerTurn` API 佐證
+- Pi `docs/extensions.md`（隨 `@earendil-works/pi-coding-agent` 安裝的本機文件） — 官方文件 — `followUp`/`ctx.isIdle()`/`triggerTurn` API 佐證
 - [pi-lazy-extensions](https://pi.dev/packages/pi-lazy-extensions) — 官方套件頁 — 既有 idleTimeout 設定慣例參考
 - [narumiruna/pi-extensions](https://github.com/narumiruna/pi-extensions) — GitHub repo — 139★，`/goal`、caffeinate 等相關 Pi 擴充集合
 - [anthropics/claude-code plugins/ralph-wiggum](https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum) — 官方 repo — 已用 GitHub API 驗證路徑存在（`hooks/`、`commands/`、`scripts/`）

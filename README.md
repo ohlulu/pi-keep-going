@@ -15,15 +15,18 @@ Two capabilities:
 
 ## Install
 
-Not published to npm yet — install from a clone:
-
 ```bash
-git clone <repo> pi-keep-going
-pi install ./pi-keep-going
+pi install git:github.com/ohlulu/pi-keep-going
 ```
 
-A local-path install is added to `~/.pi/agent/settings.json` by reference, not
-copied, so edits in the clone take effect on the next Pi start.
+Not on npm yet. To hack on it, install the clone by path instead — a local-path
+install is referenced from `~/.pi/agent/settings.json`, not copied, so your edits
+take effect on the next Pi start:
+
+```bash
+git clone https://github.com/ohlulu/pi-keep-going
+pi install ./pi-keep-going
+```
 
 ## `/kg` command
 
