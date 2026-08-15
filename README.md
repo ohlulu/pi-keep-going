@@ -1,17 +1,26 @@
 # pi-keep-going
 
-A [Pi](https://pi.dev) extension that schedules one-shot follow-up messages and
-auto-resumes the agent after a provider usage limit resets.
+**English** · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [Français](README.fr.md) · [Español](README.es.md)
 
-Two capabilities:
+A [Pi](https://pi.dev) extension that keeps a run alive across provider usage
+limits, and schedules one-shot follow-up messages when you ask for them.
 
-1. **One-shot scheduling** — `/kg 40m keep going` sends `keep going` after 40
-   minutes. Duration accepts `h/m/s` combos (`90s`, `2h30m`) or `auto` (derive
-   the wait from the current provider's usage reset time).
-2. **Usage-limit auto-resume** *(on by default)* — when a run stops on a
-   provider usage limit, the extension reads the reset time and re-sends a
-   continuation message once the window reopens. Supports Anthropic, OpenAI
-   Codex, and Google Gemini.
+## Zero setup — it just runs
+
+**You do not have to run any command.** Auto-resume is on by default
+(`autoResume.enabled: true`), so once the extension is installed it watches
+every turn on its own:
+
+1. It caches any `429` response it sees from the provider.
+2. When a turn ends on a usage-limit error, it classifies the error and resolves
+   the reset time (headers → error body → provider usage API).
+3. It schedules the continuation message (`continue`) for `reset + 90s` and
+   tells you when that is:
+   `Usage limit reached (anthropic) — auto-resuming at 14:05.`
+
+When the window reopens the message is sent and the agent picks up where it
+stopped. The `/kg` command exists for the times you want to schedule something
+yourself — it is never required for the automatic path.
 
 ## Install
 
@@ -76,6 +85,9 @@ itself. If a usage API is unreachable or unsupported, `auto` degrades to a
 notification suggesting a manual `/kg <duration>`.
 
 ## Settings
+
+Everything below already has a working default — you only need a config file to
+change behavior, e.g. to turn auto-resume off or send a different message.
 
 Global config lives at `<pi agent dir>/keep-going.json`. A project-local
 override at `<cwd>/<pi config dir>/keep-going.json` is applied **only when the

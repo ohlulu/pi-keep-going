@@ -20,7 +20,7 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README*.md"
   ],
   "engines": {
     "node": ">=20.3.0"
