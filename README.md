@@ -25,12 +25,17 @@ yourself — it is never required for the automatic path.
 ## Install
 
 ```bash
-pi install git:github.com/ohlulu/pi-keep-going
+pi install npm:pi-keep-going
 ```
 
-Not on npm yet. To hack on it, install the clone by path instead — a local-path
-install is referenced from `~/.pi/agent/settings.json`, not copied, so your edits
-take effect on the next Pi start:
+Pi prompts you to run `pi update --extensions` only when a new **version** is
+published: for an npm source it compares the installed `package.json` version
+against the registry. Leave the spec unversioned — `npm:pi-keep-going@1.0.0`
+counts as pinned, and Pi skips update checks for pinned sources entirely.
+
+To hack on it, install a clone by path instead. A local-path install is
+referenced from `~/.pi/agent/settings.json`, not copied, so your edits take
+effect on the next Pi start:
 
 ```bash
 git clone https://github.com/ohlulu/pi-keep-going

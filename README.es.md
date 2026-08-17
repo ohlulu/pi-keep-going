@@ -27,12 +27,18 @@ nunca hace falta para el camino automático.
 ## Instalación
 
 ```bash
-pi install git:github.com/ohlulu/pi-keep-going
+pi install npm:pi-keep-going
 ```
 
-Todavía no está en npm. Para desarrollar, instala el clon por ruta local: una
-instalación por ruta se referencia desde `~/.pi/agent/settings.json`, no se
-copia, así que tus cambios surten efecto en el siguiente arranque de Pi.
+Pi solo te pide ejecutar `pi update --extensions` cuando se publica una nueva
+**versión**: para una fuente npm compara la versión del `package.json` instalado
+con la del registro. Deja la especificación sin versión —
+`npm:pi-keep-going@1.0.0` cuenta como fijada, y Pi omite por completo la
+comprobación de actualizaciones para las fuentes fijadas.
+
+Para desarrollar, instala un clon por ruta local. Una instalación por ruta se
+referencia desde `~/.pi/agent/settings.json`, no se copia, así que tus cambios
+surten efecto en el siguiente arranque de Pi.
 
 ```bash
 git clone https://github.com/ohlulu/pi-keep-going

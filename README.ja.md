@@ -23,12 +23,18 @@
 ## インストール
 
 ```bash
-pi install git:github.com/ohlulu/pi-keep-going
+pi install npm:pi-keep-going
 ```
 
-npm には未公開です。開発する場合はクローンをパス指定でインストールしてください。
-ローカルパスでのインストールは `~/.pi/agent/settings.json` から参照されるだけで
-コピーはされないため、編集内容は次回の Pi 起動時に反映されます。
+Pi が `pi update --extensions` を促すのは、新しい**バージョン**が公開されたときだけ
+です。npm ソースの場合、インストール済みの `package.json` のバージョンとレジストリ上
+のバージョンを比較します。指定にバージョンを付けないでください。
+`npm:pi-keep-going@1.0.0` は pinned 扱いになり、Pi は pinned なソースの更新確認を
+完全にスキップします。
+
+開発する場合はクローンをパス指定でインストールしてください。ローカルパスでの
+インストールは `~/.pi/agent/settings.json` から参照されるだけでコピーはされないため、
+編集内容は次回の Pi 起動時に反映されます。
 
 ```bash
 git clone https://github.com/ohlulu/pi-keep-going

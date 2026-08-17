@@ -22,12 +22,16 @@ extension 裝好之後就會自己盯著每一輪對話：
 ## 安裝
 
 ```bash
-pi install git:github.com/ohlulu/pi-keep-going
+pi install npm:pi-keep-going
 ```
 
-尚未發佈到 npm。要開發的話改用本地路徑安裝——local-path 安裝是在
-`~/.pi/agent/settings.json` 裡以參照方式記錄，不是複製檔案，所以你的修改在下次
-啟動 Pi 時就會生效：
+只有發布新**版本**時，Pi 才會提示你執行 `pi update --extensions`——對 npm source
+它比對的是已安裝的 `package.json` version 與 registry 上的版本。source 字串不要帶
+版本號：`npm:pi-keep-going@1.0.0` 會被視為 pinned，而 Pi 對 pinned source 完全跳過
+更新檢查。
+
+要開發的話改用本地路徑安裝。local-path 安裝是在 `~/.pi/agent/settings.json` 裡以參照
+方式記錄，不是複製檔案，所以你的修改在下次啟動 Pi 時就會生效：
 
 ```bash
 git clone https://github.com/ohlulu/pi-keep-going
