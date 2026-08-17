@@ -135,6 +135,3 @@ pi -e ./src/index.ts   # cargar localmente
 `@earendil-works/pi-coding-agent` es una **peer dependency**: la aporta el
 runtime de Pi que carga la extensión, así que no debe empaquetarse. También
 figura aquí como dev dependency para que `tsc` y `vitest` la resuelvan en local.
-
-Consulta `docs/plan.md` para el diseño completo y `docs/tasks.md` para la lista
-de hitos.

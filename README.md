@@ -128,6 +128,3 @@ pi -e ./src/index.ts   # load locally
 `@earendil-works/pi-coding-agent` is a **peer dependency** — it is provided by
 the Pi runtime that loads the extension, so it must not be bundled. It is also a
 dev dependency here so `tsc` and `vitest` resolve it locally.
-
-See `docs/plan.md` for the full design and `docs/tasks.md` for the milestone
-checklist.

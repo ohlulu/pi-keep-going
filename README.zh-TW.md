@@ -118,5 +118,3 @@ pi -e ./src/index.ts   # 本地載入
 `@earendil-works/pi-coding-agent` 是 **peer dependency**——由載入 extension 的 Pi
 runtime 提供，所以絕對不能打包進來。它同時也列在 dev dependency，讓 `tsc` 和
 `vitest` 在本地解析得到。
-
-完整設計見 `docs/plan.md`，里程碑清單見 `docs/tasks.md`。

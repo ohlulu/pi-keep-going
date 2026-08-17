@@ -138,6 +138,3 @@ pi -e ./src/index.ts   # chargement local
 par le runtime Pi qui charge l'extension, elle ne doit donc pas être empaquetée.
 Elle figure aussi en dev dependency ici pour que `tsc` et `vitest` la résolvent
 localement.
-
-Voir `docs/plan.md` pour la conception complète et `docs/tasks.md` pour la liste
-des jalons.

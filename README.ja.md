@@ -125,6 +125,3 @@ pi -e ./src/index.ts   # ローカルで読み込む
 `@earendil-works/pi-coding-agent` は **peer dependency** です。拡張機能を読み込む Pi
 ランタイムから提供されるため、バンドルしてはいけません。`tsc` と `vitest` がローカルで
 解決できるよう、dev dependency にも入れてあります。
-
-設計の詳細は `docs/plan.md`、マイルストーンのチェックリストは `docs/tasks.md` を
-参照してください。
