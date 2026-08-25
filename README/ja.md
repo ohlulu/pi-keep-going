@@ -1,6 +1,6 @@
 # pi-keep-going
 
-[English](README.md) · [繁體中文](README.zh-TW.md) · **日本語** · [Français](README.fr.md) · [Español](README.es.md)
+[English](../README.md) · [繁體中文](zh-TW.md) · **日本語** · [Français](fr.md) · [Español](es.md)
 
 プロバイダの利用上限（usage limit）をまたいで実行を継続させ、必要なときには
 単発のフォローアップメッセージも予約できる [Pi](https://pi.dev) 拡張機能です。
@@ -51,6 +51,7 @@ pi install ./pi-keep-going
 | `/kg auto [message]` | 現在のプロバイダの usage API を照会し、リセット時刻 + バッファに予約する。 |
 | `/kg list` | 予約中のメッセージを一覧表示する。 |
 | `/kg cancel` | 予約をキャンセルする（複数ある場合は選択を求める）。 |
+| `/kg help` | 使い方を表示する。`/kg` 単体でも同じ。 |
 
 予約ジョブはブランチごとに永続化されるため、`/tree`、`/fork`、リロードを経ても
 残ります。タイマーは絶対時刻のタイムスタンプを 30 秒ごとのティックで確認する方式
@@ -77,9 +78,9 @@ pi install ./pi-keep-going
 
 | プロバイダ | 検出方法 | `auto` の usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | レート制限エラー、429、unified-reset ヘッダー | `GET /api/oauth/usage` → `five_hour.resets_at`（API キーではなく OAuth ログインが必要） |
-| Google Gemini (`google-gemini-cli`) | `RESOURCE_EXHAUSTED`、クォータエラー | `POST v1internal:retrieveUserQuota` → 最も早い `buckets[].resetTime`（CLI ログインの project id が必要） |
+| Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、クォータエラー | `POST v1internal:retrieveUserQuota` → 最も早い `buckets[].resetTime`（CLI ログインの project id が必要） |
 
 トークンは `ctx.modelRegistry.getApiKeyForProvider()` 経由で取得します（OAuth の
 リフレッシュは Pi が担当）。拡張機能が `auth.json` を直接読んだり、自前でトークンを

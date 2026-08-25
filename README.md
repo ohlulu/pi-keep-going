@@ -1,6 +1,6 @@
 # pi-keep-going
 
-**English** · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [Français](README.fr.md) · [Español](README.es.md)
+**English** · [繁體中文](README/zh-TW.md) · [日本語](README/ja.md) · [Français](README/fr.md) · [Español](README/es.md)
 
 A [Pi](https://pi.dev) extension that keeps a run alive across provider usage
 limits, and schedules one-shot follow-up messages when you ask for them.
@@ -52,6 +52,7 @@ pi install ./pi-keep-going
 | `/kg auto [message]` | Query the current provider's usage API and schedule at the reset time + buffer. |
 | `/kg list` | List pending scheduled messages. |
 | `/kg cancel` | Cancel a scheduled message (prompts when several are pending). |
+| `/kg help` | Show usage. A bare `/kg` does the same. |
 
 Scheduled jobs are persisted per branch, so they survive `/tree`, `/fork`, and
 reload. Timers use an absolute fire timestamp checked on a 30s tick, so a job
@@ -80,9 +81,9 @@ when the per-session cap is reached or the reset is further away than
 
 | Provider | Detection | `auto` usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit errors, 429, unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at` (needs an OAuth login, not an API key) |
-| Google Gemini (`google-gemini-cli`) | `RESOURCE_EXHAUSTED`, quota errors | `POST v1internal:retrieveUserQuota` → earliest `buckets[].resetTime` (needs the CLI login's project id) |
+| Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, quota errors | `POST v1internal:retrieveUserQuota` → earliest `buckets[].resetTime` (needs the CLI login's project id) |
 
 Tokens are resolved through `ctx.modelRegistry.getApiKeyForProvider()` (Pi
 handles OAuth refresh); the extension never reads `auth.json` or refreshes tokens

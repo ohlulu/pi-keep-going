@@ -1,6 +1,6 @@
 # pi-keep-going
 
-[English](README.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [Français](README.fr.md) · **Español**
+[English](../README.md) · [繁體中文](zh-TW.md) · [日本語](ja.md) · [Français](fr.md) · **Español**
 
 Una extensión de [Pi](https://pi.dev) que mantiene viva una ejecución a pesar de
 los límites de uso del proveedor, y que programa mensajes de seguimiento
@@ -55,6 +55,7 @@ pi install ./pi-keep-going
 | `/kg auto [message]` | Consulta la API de uso del proveedor actual y programa a la hora de reinicio + margen. |
 | `/kg list` | Lista los mensajes programados pendientes. |
 | `/kg cancel` | Cancela un mensaje programado (pregunta cuál si hay varios). |
+| `/kg help` | Muestra la ayuda. Un `/kg` a secas hace lo mismo. |
 
 Los trabajos programados se persisten por rama, así que sobreviven a `/tree`, a
 `/fork` y a una recarga. Los temporizadores usan una marca de tiempo de disparo
@@ -85,9 +86,9 @@ sesión o cuando el reinicio queda más lejos que `maxWaitHours`.
 
 | Proveedor | Detección | API de uso para `auto` |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | errores de límite de tasa, 429, cabeceras unified-reset | `GET /api/oauth/usage` → `five_hour.resets_at` (requiere inicio de sesión OAuth, no una clave de API) |
-| Google Gemini (`google-gemini-cli`) | `RESOURCE_EXHAUSTED`, errores de cuota | `POST v1internal:retrieveUserQuota` → el `buckets[].resetTime` más próximo (requiere el project id del inicio de sesión de la CLI) |
+| Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, errores de cuota | `POST v1internal:retrieveUserQuota` → el `buckets[].resetTime` más próximo (requiere el project id del inicio de sesión de la CLI) |
 
 Los tokens se obtienen a través de `ctx.modelRegistry.getApiKeyForProvider()`
 (Pi se encarga del refresco de OAuth); la extensión nunca lee `auth.json` ni

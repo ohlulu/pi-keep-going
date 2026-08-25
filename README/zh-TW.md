@@ -1,6 +1,6 @@
 # pi-keep-going
 
-[English](README.md) · **繁體中文** · [日本語](README.ja.md) · [Français](README.fr.md) · [Español](README.es.md)
+[English](../README.md) · **繁體中文** · [日本語](ja.md) · [Français](fr.md) · [Español](es.md)
 
 一個 [Pi](https://pi.dev) extension：在 provider 觸發 usage limit 後自動接手續跑，
 也能在你需要時排程一次性的後續訊息。
@@ -48,6 +48,7 @@ pi install ./pi-keep-going
 | `/kg auto [message]` | 查詢目前 provider 的 usage API，排在 reset 時間 + buffer。 |
 | `/kg list` | 列出待送出的排程訊息。 |
 | `/kg cancel` | 取消排程訊息（有多筆時會詢問取消哪一筆）。 |
+| `/kg help` | 顯示用法。單打 `/kg` 效果相同。 |
 
 排程工作會依 branch 持久化，所以 `/tree`、`/fork`、reload 之後都還在。計時器記的是
 絕對觸發時間戳、以 30 秒 tick 檢查，因此機器睡眠後仍能正確觸發。除了最後真正送出的
@@ -72,9 +73,9 @@ reset 時間比 `maxWaitHours` 還遠時，會改成通知而不是排程。
 
 | Provider | 偵測方式 | `auto` usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit 錯誤、429、unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at`（需要 OAuth 登入，不能是 API key） |
-| Google Gemini (`google-gemini-cli`) | `RESOURCE_EXHAUSTED`、quota 錯誤 | `POST v1internal:retrieveUserQuota` → 最早的 `buckets[].resetTime`（需要 CLI 登入的 project id） |
+| Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、quota 錯誤 | `POST v1internal:retrieveUserQuota` → 最早的 `buckets[].resetTime`（需要 CLI 登入的 project id） |
 
 Token 一律透過 `ctx.modelRegistry.getApiKeyForProvider()` 取得（OAuth refresh 由 Pi
 處理）；extension 不會自己讀 `auth.json`，也不會自己 refresh token。若 usage API 連
