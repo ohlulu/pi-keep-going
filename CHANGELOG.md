@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Animated companion in the countdown widget: original pixel art of a dog or a
+  cat, picked at random each time a countdown starts. Rendered as truecolor
+  half-blocks, falling back to 256 colours and then to flat ASCII art depending
+  on what the terminal supports. Frames advance every 900ms and the timer only
+  runs while a job is pending, so an idle session is unaffected.
+
 ## [1.0.0] — 2026-08-17
 
 First release.

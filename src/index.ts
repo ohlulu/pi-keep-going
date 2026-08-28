@@ -11,6 +11,8 @@ import {
   recordFired,
 } from "./persist";
 import { renderWidgetLines } from "./widget";
+import { pickCompanion, type CompanionStyle } from "./anim";
+import { detectColorMode, type ColorMode } from "./sprite";
 import { humanizeDuration } from "./duration";
 import { parseKgCommand } from "./command";
 import { detectUsageLimit, providerFamily, type Cached429, type ProviderFamily } from "./limits/detect";
@@ -39,6 +41,14 @@ import { defaultLeaseIO, leasePath, refreshLease, type LeaseRole } from "./lease
 
 const WIDGET_ID = "keep-going";
 
+/**
+ * Companion frame interval. Deliberately slower than a spinner: the animation is
+ * blinks and ear twitches, which read fine this slow, and the widget can be on
+ * screen for hours during a usage-limit wait, where every frame is a wakeup on
+ * an otherwise idle process.
+ */
+const ANIMATION_INTERVAL_MS = 900;
+
 export default function (pi: ExtensionAPI): void {
   let ctx: ExtensionContext | null = null;
   let scheduler: Scheduler | null = null;
@@ -56,6 +66,34 @@ export default function (pi: ExtensionAPI): void {
   let leaseRole: LeaseRole = "owner";
   let sessionLeasePath: string | null = null;
   let sessionId = "";
+  // Companion animation. The style is rolled once per countdown, not per frame,
+  // and the timer only exists while something is actually pending.
+  let companionStyle: CompanionStyle | null = null;
+  let companionTick = 0;
+  let animationTimer: ReturnType<typeof setInterval> | null = null;
+  let colorMode: ColorMode = "ansi256";
+  let canAnimate = false;
+
+  function stopAnimation(): void {
+    if (animationTimer) {
+      clearInterval(animationTimer);
+      animationTimer = null;
+    }
+  }
+
+  /** Run the frame timer only while a job is pending. */
+  function syncAnimation(hasJobs: boolean): void {
+    const wanted = canAnimate && hasJobs;
+    if (wanted && !animationTimer) {
+      animationTimer = setInterval(() => {
+        companionTick += 1;
+        refreshWidget();
+      }, ANIMATION_INTERVAL_MS);
+      animationTimer.unref?.();
+    } else if (!wanted) {
+      stopAnimation();
+    }
+  }
 
   function refreshLeaseRole(): void {
     if (!sessionLeasePath) return;
@@ -83,7 +121,23 @@ export default function (pi: ExtensionAPI): void {
 
   function refreshWidget(): void {
     if (!ctx || !scheduler) return;
-    ctx.ui.setWidget(WIDGET_ID, renderWidgetLines(scheduler.list(), Date.now()) ?? undefined);
+    const jobs = scheduler.list();
+
+    if (jobs.length === 0) {
+      // Reset so the next countdown rolls a fresh animal.
+      companionStyle = null;
+      companionTick = 0;
+    } else if (companionStyle === null) {
+      companionStyle = pickCompanion();
+    }
+
+    const companion =
+      canAnimate && companionStyle
+        ? { style: companionStyle, tick: companionTick, mode: colorMode }
+        : null;
+
+    ctx.ui.setWidget(WIDGET_ID, renderWidgetLines(jobs, Date.now(), companion) ?? undefined);
+    syncAnimation(jobs.length > 0);
   }
 
   function createScheduler(): Scheduler {
@@ -119,6 +173,12 @@ export default function (pi: ExtensionAPI): void {
   function setup(sessionCtx: ExtensionContext): void {
     ctx = sessionCtx;
     settings = loadConfig(sessionCtx);
+    // Only the TUI draws widgets; elsewhere the frame timer would be pure waste.
+    canAnimate = sessionCtx.mode === "tui";
+    colorMode = detectColorMode(process.env);
+    stopAnimation();
+    companionStyle = null;
+    companionTick = 0;
     cached429 = null;
     autoResume = { count: 0, lastResumeAt: null };
     generation += 1;
@@ -139,6 +199,8 @@ export default function (pi: ExtensionAPI): void {
   pi.on("session_shutdown", () => {
     scheduler?.stop();
     scheduler = null;
+    stopAnimation();
+    companionStyle = null;
     ctx = null;
     cached429 = null;
     generation += 1;

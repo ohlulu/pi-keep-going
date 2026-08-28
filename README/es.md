@@ -63,6 +63,23 @@ absoluta comprobada en un tick de 30 s, por lo que un trabajo se dispara
 correctamente incluso después de que la máquina haya estado suspendida. Nada
 entra en el contexto del LLM salvo el mensaje final que se envía de verdad.
 
+## Widget de cuenta atrás
+
+Mientras haya algo pendiente, sobre el editor aparece una cuenta atrás con un
+pequeño animal animado — un perro o un gato, elegido al azar cada vez que
+empieza una cuenta atrás:
+
+```
+⏱ keep going in 7m 58s (14:23)
+```
+
+El dibujo es pixel art original, renderizado con medios bloques truecolor: una
+celda del terminal lleva dos píxeles. La profundidad de color se degrada sola —
+24 bits cuando el terminal lo anuncia, 256 colores en caso contrario y ASCII art
+plano cuando no hay color alguno. Los fotogramas avanzan cada 900 ms y el
+temporizador solo existe mientras hay un trabajo pendiente: una sesión inactiva
+queda intacta.
+
 ## Reanudación automática
 
 Cuando un turno termina con un error de límite de uso, la extensión:

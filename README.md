@@ -59,6 +59,22 @@ reload. Timers use an absolute fire timestamp checked on a 30s tick, so a job
 still fires correctly after the machine sleeps. Nothing enters the LLM context
 except the final message that is actually sent.
 
+## Countdown widget
+
+While anything is pending, a countdown sits above the editor with a small
+animated companion — a dog or a cat, chosen at random each time a countdown
+starts:
+
+```
+⏱ keep going in 7m 58s (14:23)
+```
+
+The art is original pixel art, drawn as truecolor half-blocks so one terminal
+cell carries two pixels. Colour degrades on its own: 24-bit where the terminal
+advertises it, 256 colours otherwise, and flat ASCII art when there is no colour
+at all. Frames advance every 900ms, and the timer only exists while a job is
+pending — an idle session is left completely alone.
+
 ## Auto-resume
 
 When a turn ends on a usage-limit error, the extension:
