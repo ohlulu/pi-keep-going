@@ -15,13 +15,24 @@ on:
     # Bare semver, matching the repo's tag convention. No `v` prefix.
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
-  # Lets an already-pushed tag be published without moving it:
-  #   gh workflow run release.yml --ref <tag>
+  # Lets an already-pushed tag be published without moving it. Dispatch runs
+  # from a branch and takes the tag as input, because `--ref <tag>` resolves the
+  # workflow file at that tag — which fails for any tag created before this file
+  # existed:
+  #   gh workflow run release.yml --ref main -f tag=<tag>
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release. Defaults to the dispatched ref."
+        required: false
+        type: string
 
 permissions:
   id-token: write # required: lets npm verify this workflow via OIDC
   contents: write # required: creating the GitHub Release
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   release:
@@ -29,6 +40,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - uses: actions/setup-node@v6
         with:
@@ -49,8 +62,13 @@ jobs:
       # rather than at the registry.
       - name: Verify tag matches package.json and CHANGELOG
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           version="$(node -p 'require("./package.json").version')"
+
+          if [ -z "$tag" ]; then
+            echo "::error::no release tag resolved"
+            exit 1
+          fi
 
           if [ "$tag" != "$version" ]; then
             echo "::error::tag '$tag' != package.json version '$version'"
@@ -74,7 +92,7 @@ jobs:
 
       - name: Extract release notes
         run: |
-          awk -v v="${GITHUB_REF_NAME}" '
+          awk -v v="${RELEASE_TAG}" '
             $0 ~ "^## \\[" v "\\]" { f = 1; next }
             /^## \[/ { f = 0 }
             f
@@ -92,7 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "release $tag already exists, leaving it as is"
           else
