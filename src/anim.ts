@@ -58,18 +58,22 @@ function coat(baseHex: string, hueShift: number, accents: Record<string, string>
   });
 }
 
-const DOG_COLORS = coat("#d99a52", 20, {
-  w: "#ffffff",
-  e: "#2b1a12",
-  n: "#2b1a12",
-  p: "#e88b96",
+// Muted on purpose. The coat sits behind the editor for the whole wait, so it
+// reads as furniture rather than as a notification; a saturated ramp competes
+// with the syntax highlighting above it. Accents are damped to match, since a
+// vivid eye or nose against a muted coat is the only thing the eye would land on.
+const DOG_COLORS = coat("#c9a480", 13, {
+  w: "#f4f0ea",
+  e: "#33241c",
+  n: "#33241c",
+  p: "#c9959a",
 });
 
-const CAT_COLORS = coat("#8b90a6", 18, {
-  w: "#ffffff",
-  e: "#3fbf94",
-  n: "#e88b96",
-  p: "#f0a6ae",
+const CAT_COLORS = coat("#8d919c", 12, {
+  w: "#f2f2f6",
+  e: "#2f4a41",
+  n: "#9c7378",
+  p: "#c2a0a4",
 });
 
 /**
