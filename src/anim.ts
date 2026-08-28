@@ -4,18 +4,29 @@
  * Original pixel art — deliberately generic animals, no licensed character.
  *
  * Each companion carries two representations:
- * - `frames`: pixel grids drawn with the palette below, rendered as truecolor
+ * - `frames`: pixel grids drawn with the ramps below, rendered as truecolor
  *   half-blocks (see sprite.ts). One terminal cell holds two vertically stacked
- *   pixels, so a 12-row sprite occupies 6 text rows.
+ *   pixels, so a 14-row sprite occupies 7 text rows.
  * - `ascii`: a flat fallback for `mono` colour mode, where a coloured sprite
  *   would collapse into an unreadable silhouette.
+ *
+ * Drawing rules the art follows, all of which are visible in the grids:
+ * - one light source, top-left. Highlights cluster on the lit side only;
+ *   shading that hugs the whole outline is pillow shading and kills the form.
+ * - selective outline: the shadow side is outlined in the darkest ramp step,
+ *   the lit side is left as the base tone so the form reads as lit, not inked.
+ * - eyes sit low (~57% of height) and both glints are on the same, lit side.
+ *   Mirrored glints read as a squint.
+ * - the ears attach only at their top row; the transparent slit below is the
+ *   negative space that makes the silhouette legible as an animal. Verify with
+ *   `scripts/sprite-png.ts --silhouette`.
  *
  * Grids are plain strings so the art stays reviewable in a diff. Tests enforce
  * that every frame of a companion is the same rectangle and uses only declared
  * palette keys.
  */
 
-import { palette, type Palette, type PixelGrid } from "./sprite";
+import { palette, ramp, type Palette, type PixelGrid } from "./sprite";
 
 export type CompanionStyle = "dog" | "cat";
 
@@ -30,32 +41,35 @@ export interface Companion {
 }
 
 /**
- * Shared palette keys, so both animals read as the same illustration set:
- * `k` outline, `s` shadow, `b` base coat, `l` light coat, `w` highlight,
- * `e` eye, `n` nose, `p` pink (inner ear, tongue), `g` ground shadow.
+ * Ramps, not hand-picked hex. `ramp()` shifts hue cool into the shadows and warm
+ * into the highlights, which is what keeps a 4-5 tone sprite from reading as mud.
+ * Keys `1`-`5` are the ramp darkest-to-lightest; `1` doubles as the outline on
+ * the shadow side, which is the standard way to save a palette slot.
  */
-const DOG_COLORS = palette({
-  k: "#3a2718",
-  s: "#a86a2e",
-  b: "#e0a05a",
-  l: "#f7e6cd",
+function coat(baseHex: string, hueShift: number, accents: Record<string, string>): Palette {
+  const [darkest, shadow, base, light, highlight] = ramp(baseHex, 5, hueShift);
+  return palette({
+    "1": darkest,
+    "2": shadow,
+    "3": base,
+    "4": light,
+    "5": highlight,
+    ...accents,
+  });
+}
+
+const DOG_COLORS = coat("#d99a52", 20, {
   w: "#ffffff",
-  e: "#2a1a10",
-  n: "#241610",
-  p: "#e79aa3",
-  g: "#241a12",
+  e: "#2b1a12",
+  n: "#2b1a12",
+  p: "#e88b96",
 });
 
-const CAT_COLORS = palette({
-  k: "#2b2b38",
-  s: "#5d6070",
-  b: "#8a8fa3",
-  l: "#e8ebf2",
+const CAT_COLORS = coat("#8b90a6", 18, {
   w: "#ffffff",
-  e: "#4ec9a0",
-  n: "#d98a94",
-  p: "#e79aa3",
-  g: "#1c1c24",
+  e: "#3fbf94",
+  n: "#e88b96",
+  p: "#f0a6ae",
 });
 
 /**
@@ -63,149 +77,144 @@ const CAT_COLORS = palette({
  * so motion reads even at a slow frame rate; the blink lands on one frame only.
  */
 const DOG_FRAMES: PixelGrid[] = [
-  // Neutral: ears hanging, eyes open.
+  // Neutral.
   [
-    "........kkkkkkkk........",
-    "......kkbbbbbbbbkk......",
-    ".....kbbbbbbbbbbbbk.....",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    ".ksskkbbwebbbbwebbkkssk.",
-    ".ksskkbbeebbbbeebbkkssk.",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    "..kskkbbbbllllbbbbkksk..",
-    "..kskkbbbllnnllbbbkksk..",
-    "...kkkbbbllkkllbbskkk...",
-    ".....kbbbbllllbbssk.....",
-    "......kbbbllllbbsk......",
-    ".......kkbbbsssk........",
-    ".........kkkkkk.........",
+    "........33333333........",
+    "......334555554431......",
+    ".....34555554444421.....",
+    "332133455554444422111233",
+    "3221.34455444442221.1223",
+    "3221.34444444422221.1223",
+    "3221.34444444422221.1223",
+    "3221.344we4444we221.1223",
+    ".321.344ee4444ee221.123.",
+    ".331.33344555542221.133.",
+    "..11.333455nn554221.11..",
+    "......333455552211......",
+    ".......3333222211.......",
+    ".........111111.........",
   ],
-  // Ears swing back, head settles.
+  // Ears perk up.
   [
-    "........kkkkkkkk........",
-    "......kkbbbbbbbbkk......",
-    ".....kbbbbbbbbbbbbk.....",
-    ".....kbbbbbbbbbbbbk.....",
-    ".ksskkbbwebbbbwebbkkssk.",
-    ".ksskkbbeebbbbeebbkkssk.",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    ".ksskkbbbbllllbbbbkkssk.",
-    "..kskkbbbllnnllbbbkksk..",
-    "..kskkbbbllkkllbbskksk..",
-    "...kkkbbbbllllbbsskkk...",
-    "......kbbbllllbbsk......",
-    ".......kkbbbsssk........",
-    ".........kkkkkk.........",
+    "........33333333........",
+    "......334555554431......",
+    ".....34555554444421.....",
+    "332133455554444422111233",
+    "3221.34455444442221.1223",
+    "3221.34444444422221.1223",
+    "3221.34444444422221.1223",
+    ".321.344we4444we221.123.",
+    ".331.344ee4444ee221.133.",
+    "..11.33344555542221.11..",
+    ".....333455nn554221.....",
+    "......333455552211......",
+    ".......3333222211.......",
+    ".........111111.........",
   ],
   // Blink.
   [
-    "........kkkkkkkk........",
-    "......kkbbbbbbbbkk......",
-    ".....kbbbbbbbbbbbbk.....",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    ".ksskkbbkkbbbbkkbbkkssk.",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    "..kskkbbbbllllbbbbkksk..",
-    "..kskkbbbllnnllbbbkksk..",
-    "...kkkbbbllkkllbbskkk...",
-    ".....kbbbbllllbbssk.....",
-    "......kbbbllllbbsk......",
-    ".......kkbbbsssk........",
-    ".........kkkkkk.........",
+    "........33333333........",
+    "......334555554431......",
+    ".....34555554444421.....",
+    "332133455554444422111233",
+    "3221.34455444442221.1223",
+    "3221.34444444422221.1223",
+    "3221.34444444422221.1223",
+    "3221.34444444444221.1223",
+    ".321.34411444411221.123.",
+    ".331.33344555542221.133.",
+    "..11.333455nn554221.11..",
+    "......333455552211......",
+    ".......3333222211.......",
+    ".........111111.........",
   ],
   // Tongue out.
   [
-    "........kkkkkkkk........",
-    "......kkbbbbbbbbkk......",
-    ".....kbbbbbbbbbbbbk.....",
-    ".....kbbbbbbbbbbbbk.....",
-    ".ksskkbbwebbbbwebbkkssk.",
-    ".ksskkbbeebbbbeebbkkssk.",
-    ".ksskkbbbbbbbbbbbbkkssk.",
-    ".ksskkbbbbllllbbbbkkssk.",
-    "..kskkbbbllnnllbbbkksk..",
-    "..kskkbbbllkkllbbskksk..",
-    "...kkkbbbbllppbbsskkk...",
-    "......kbbbblppbbsk......",
-    ".......kkbbbpssk........",
-    ".........kkkkkk.........",
+    "........33333333........",
+    "......334555554431......",
+    ".....34555554444421.....",
+    "332133455554444422111233",
+    "3221.34455444442221.1223",
+    "3221.34444444422221.1223",
+    "3221.34444444422221.1223",
+    ".321.344we4444we221.123.",
+    ".331.344ee4444ee221.133.",
+    "..11.33344555542221.11..",
+    ".....333455nn554221.....",
+    "......3334p5555221......",
+    ".......3333222211.......",
+    ".........111111.........",
   ],
 ];
 
-/**
- * Sitting cat, front view. Where the dog wags, the cat's tail curls slowly and
- * its ears swivel — same silhouette budget, lazier motion, so the two read as
- * different personalities rather than one animation with new ears.
- */
 const CAT_FRAMES: PixelGrid[] = [
-  // Neutral: both ears up, whiskers out.
+  // Neutral.
   [
-    "....k..............k....",
-    "....kpk..........kpk....",
-    "...kbpbk........kbpbk...",
-    "...kbbbkkkkkkkkkkbbbk...",
-    "....kbbbbbbbbbbbbbbk....",
-    "...kbbbwebbbbbbwebbbk...",
-    "...kbbbeebbbbbbeebbbk...",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "ssskbbbbbbbnnbbbbbbsksss",
-    "...kbbbbbllkkllbbbbsk...",
-    "ssskbbbbbbllllbbbbbsksss",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "....kkbbbbbbbbbbbbsk....",
-    "......kkkkkkkkkkkk......",
+    "....33............11....",
+    "....3pp..........pp1....",
+    "...34pp1........2pp11...",
+    "...334455554433222221...",
+    "...334555543333322221...",
+    "...334455543333222221...",
+    "...333444433332222221...",
+    "...33we3333333we32221...",
+    ".1133ee3333333ee3222111.",
+    "...333344444433222221...",
+    "111333335555533222221111",
+    "....333555nn55332211....",
+    ".....33335555322111.....",
+    ".......3333222211.......",
   ],
-  // Left ear swivels outward.
+  // Left ear swivels out.
   [
-    "...k...............k....",
-    "...kpk...........kpk....",
-    "..kbpbk.........kbpbk...",
-    "...kbbkkkkkkkkkkkbbbk...",
-    "....kbbbbbbbbbbbbbbk....",
-    "...kbbbwebbbbbbwebbbk...",
-    "...kbbbeebbbbbbeebbbk...",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "ssskbbbbbbbnnbbbbbbsksss",
-    "...kbbbbbllkkllbbbbsk...",
-    "ssskbbbbbbllllbbbbbsksss",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "....kkbbbbbbbbbbbbsk....",
-    "......kkkkkkkkkkkk......",
+    ".....3............11....",
+    "....3pp..........pp1....",
+    "...34pp1........2pp11...",
+    "...334455554433222221...",
+    "...334555543333322221...",
+    "...334455543333222221...",
+    "...333444433332222221...",
+    "...33we3333333we32221...",
+    "11133ee3333333ee32221111",
+    "...333344444433222221...",
+    ".1133333555553322222111.",
+    "....333555nn55332211....",
+    ".....33335555322111.....",
+    ".......3333222211.......",
   ],
   // Slow blink.
   [
-    "....k..............k....",
-    "....kpk..........kpk....",
-    "...kbpbk........kbpbk...",
-    "...kbbbkkkkkkkkkkbbbk...",
-    "....kbbbbbbbbbbbbbbk....",
-    "...kbbbbbbbbbbbbbbbbk...",
-    "...kbbbkkbbbbbbkkbbbk...",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "ssskbbbbbbbnnbbbbbbsksss",
-    "...kbbbbbllkkllbbbbsk...",
-    "ssskbbbbbbllllbbbbbsksss",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "....kkbbbbbbbbbbbbsk....",
-    "......kkkkkkkkkkkk......",
+    "....33............11....",
+    "....3pp..........pp1....",
+    "...34pp1........2pp11...",
+    "...334455554433222221...",
+    "...334555543333322221...",
+    "...334455543333222221...",
+    "...333444433332222221...",
+    "...333333333333332221...",
+    ".1133113333333113222111.",
+    "...333344444433222221...",
+    "111333335555533222221111",
+    "....333555nn55332211....",
+    ".....33335555322111.....",
+    ".......3333222211.......",
   ],
-  // Right ear swivels outward.
+  // Right ear swivels out.
   [
-    "....k...............k...",
-    "....kpk...........kpk...",
-    "...kbpbk.........kbpbk..",
-    "...kbbbkkkkkkkkkkkbbk...",
-    "....kbbbbbbbbbbbbbbk....",
-    "...kbbbwebbbbbbwebbbk...",
-    "...kbbbeebbbbbbeebbbk...",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "ssskbbbbbbbnnbbbbbbsksss",
-    "...kbbbbbllkkllbbbbsk...",
-    "ssskbbbbbbllllbbbbbsksss",
-    "...kbbbbbbbbbbbbbbbsk...",
-    "....kkbbbbbbbbbbbbsk....",
-    "......kkkkkkkkkkkk......",
+    "....33............11....",
+    "....3pp..........pp1....",
+    "...34pp1........2pp11...",
+    "...334455554433222221...",
+    "...334555543333322221...",
+    "...334455543333222221...",
+    "...333444433332222221...",
+    "...33we3333333we32221...",
+    "11133ee3333333ee32221111",
+    "...333344444433222221...",
+    ".1133333555553322222111.",
+    "....333555nn55332211....",
+    ".....33335555322111.....",
+    ".......3333222211.......",
   ],
 ];
 

@@ -37,6 +37,80 @@ export function hexToRgb(hex: string): Rgb {
   return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
 }
 
+function rgbToHsv(rgb: Rgb): [number, number, number] {
+  const [r, g, b] = rgb.map((v) => v / 255) as [number, number, number];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [h, max === 0 ? 0 : d / max, max];
+}
+
+function hsvToRgb(h: number, s: number, v: number): Rgb {
+  const hh = ((h % 360) + 360) % 360;
+  const c = v * s;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = v - c;
+  const seg = Math.floor(hh / 60) % 6;
+  const [r, g, b] = (
+    [
+      [c, x, 0],
+      [x, c, 0],
+      [0, c, x],
+      [0, x, c],
+      [x, 0, c],
+      [c, 0, x],
+    ] as const
+  )[seg];
+  const to255 = (n: number): number => Math.max(0, Math.min(255, Math.round((n + m) * 255)));
+  return [to255(r), to255(g), to255(b)];
+}
+
+function toHex(rgb: Rgb): string {
+  return `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/**
+ * Build a hue-shifted colour ramp from a midtone, darkest first.
+ *
+ * Straight darkening reads as mud. Real light pushes shadows cool and highlights
+ * warm, so hue rotates across the ramp while saturation peaks at the midtone and
+ * falls off in the highlight as it approaches white.
+ *
+ * `hueShift` is the total rotation in degrees from darkest to lightest; roughly
+ * 10-25 is the usable band. Below that the shift is invisible, above it the
+ * subject changes colour instead of being lit.
+ */
+export function ramp(baseHex: string, steps: number, hueShift = 16): string[] {
+  if (steps < 2) throw new Error(`A ramp needs at least 2 steps, got ${steps}`);
+  const [h, s, v] = rgbToHsv(hexToRgb(baseHex));
+  const out: string[] = [];
+  // Interpolate between explicit endpoints rather than offsetting from the base
+  // and clamping. A light base clips at 1.0 otherwise, and the top two steps end
+  // up sharing a value — the "no value contrast" failure that reads as mud.
+  const vDark = Math.max(0.1, v * 0.42);
+  const vLight = Math.min(0.98, v + (1 - v) * 0.85);
+
+  for (let i = 0; i < steps; i += 1) {
+    const t = i / (steps - 1);
+    const c = t - 0.5; // -0.5 darkest .. +0.5 lightest
+    const value = vDark + (vLight - vDark) * t;
+    // Shadows rotate one way, highlights the other; browns read better with
+    // shadows toward red and highlights toward yellow, which this preserves.
+    const hue = h + c * hueShift * 2;
+    const sat = c <= 0 ? Math.min(1, s * (1 - c * 0.3)) : Math.max(0.05, s * (1 - c * 0.9));
+    out.push(toHex(hsvToRgb(hue, sat, value)));
+  }
+  return out;
+}
+
 export function palette(entries: Readonly<Record<string, string>>): Palette {
   const out: Record<string, Rgb> = {};
   for (const [key, hex] of Object.entries(entries)) {

@@ -3,6 +3,7 @@ import {
   detectColorMode,
   hexToRgb,
   palette,
+  ramp,
   renderHalfBlocks,
   toAnsi256,
   type PixelGrid,
@@ -20,6 +21,73 @@ describe("hexToRgb", () => {
   it("rejects malformed input", () => {
     expect(() => hexToRgb("#fff")).toThrow();
     expect(() => hexToRgb("#gggggg")).toThrow();
+  });
+});
+
+// These assertions encode the craft rules a ramp exists to satisfy: straight
+// darkening reads as mud, so hue must rotate and value must separate.
+describe("ramp", () => {
+  const hsv = (hex: string): [number, number, number] => {
+    const rgb = hexToRgb(hex);
+    const [r, g, b] = [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const d = max - min;
+    let h = 0;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h = (h * 60 + 360) % 360;
+    }
+    return [h, max === 0 ? 0 : d / max, max];
+  };
+
+  it("needs at least two steps", () => {
+    expect(() => ramp("#d99a52", 1)).toThrow();
+  });
+
+  // Artists check value contrast by desaturating the art, so these assert on
+  // relative luminance rather than HSV value.
+  const luminance = (hex: string): number => {
+    const rgb = hexToRgb(hex);
+    return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  };
+
+  it("runs darkest to lightest", () => {
+    for (const base of ["#d99a52", "#8b90a6", "#3f6fb5"]) {
+      const values = ramp(base, 5).map(luminance);
+      for (let i = 1; i < values.length; i += 1) {
+        expect(values[i]).toBeGreaterThan(values[i - 1]);
+      }
+    }
+  });
+
+  it("separates adjacent steps enough to stay readable when desaturated", () => {
+    for (const base of ["#d99a52", "#8b90a6"]) {
+      const values = ramp(base, 5).map(luminance);
+      for (let i = 1; i < values.length; i += 1) {
+        expect(values[i] - values[i - 1]).toBeGreaterThan(0.06);
+      }
+    }
+  });
+
+  it("rotates hue across the ramp instead of only darkening", () => {
+    const hues = ramp("#d99a52", 5, 20).map((hex) => hsv(hex)[0]);
+    const total = Math.abs(hues[hues.length - 1] - hues[0]);
+    expect(total).toBeGreaterThan(10);
+    expect(total).toBeLessThan(80);
+  });
+
+  it("drops saturation in the highlight so it approaches white", () => {
+    const sats = ramp("#d99a52", 5).map((hex) => hsv(hex)[1]);
+    expect(sats[sats.length - 1]).toBeLessThan(sats[0]);
+    expect(sats[sats.length - 1]).toBeLessThan(sats[2]);
+  });
+
+  it("honours the requested step count", () => {
+    expect(ramp("#8b90a6", 4)).toHaveLength(4);
+    expect(ramp("#8b90a6", 2)).toHaveLength(2);
   });
 });
 
