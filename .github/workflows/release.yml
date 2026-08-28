@@ -1,0 +1,105 @@
+# Publishes a tagged version to npm via trusted publishing (OIDC), and creates
+# the GitHub Release from the matching CHANGELOG section.
+#
+# The filename is part of the npm trusted publisher configuration on npmjs.com
+# (Settings -> Trusted publishing). It is matched exactly and case-sensitively,
+# so renaming this file breaks publishing until npm is updated to match.
+#
+# No npm token exists anywhere: the registry trusts a short-lived OIDC token
+# minted by GitHub for this specific repository and workflow.
+
+name: Release
+
+on:
+  push:
+    # Bare semver, matching the repo's tag convention. No `v` prefix.
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  # Lets an already-pushed tag be published without moving it:
+  #   gh workflow run release.yml --ref <tag>
+  workflow_dispatch:
+
+permissions:
+  id-token: write # required: lets npm verify this workflow via OIDC
+  contents: write # required: creating the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest # trusted publishing rejects self-hosted runners
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      # Trusted publishing needs npm >= 11.5.1. Node 24 bundles a new enough npm
+      # today, but the floor is a hard requirement and a silent bump would fail
+      # only at the publish step, after the Release is already public.
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      # The tag is the release identity. If it disagrees with package.json the
+      # published artifact would carry a version nobody tagged, so stop here
+      # rather than at the registry.
+      - name: Verify tag matches package.json and CHANGELOG
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="$(node -p 'require("./package.json").version')"
+
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag '$tag' != package.json version '$version'"
+            exit 1
+          fi
+
+          # The Release body is lifted from this heading's section, so a missing
+          # or misspelled heading would publish an empty Release.
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::no '## [$version]' heading in CHANGELOG.md"
+            exit 1
+          fi
+
+          echo "releasing $version"
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - name: Extract release notes
+        run: |
+          awk -v v="${GITHUB_REF_NAME}" '
+            $0 ~ "^## \\[" v "\\]" { f = 1; next }
+            /^## \[/ { f = 0 }
+            f
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "::error::extracted release notes are empty"
+            exit 1
+          fi
+          cat release-notes.md
+
+      # Idempotent: a re-run against an existing tag must not fail here and skip
+      # the publish below.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists, leaving it as is"
+          else
+            gh release create "$tag" --title "$tag" --notes-file release-notes.md
+          fi
+
+      # No NODE_AUTH_TOKEN: authentication is the OIDC token. Provenance is
+      # generated automatically for a public package from a public repo.
+      - name: Publish to npm
+        run: npm publish --access public
