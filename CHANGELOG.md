@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] — 2026-08-28
 
 ### Added
 
@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   half-blocks, falling back to 256 colours and then to flat ASCII art depending
   on what the terminal supports. Frames advance every 900ms and the timer only
   runs while a job is pending, so an idle session is unaffected.
+
+### Fixed
+
+- Corrected the provider table in the READMEs: the Codex reset time is read from
+  `rate_limit.primary_window.reset_at`, and the Gemini row was missing the
+  `google` provider id.
 
 ## [1.0.0] — 2026-08-17
 
@@ -47,4 +53,5 @@ First release.
   send a scheduled job exactly once.
 - READMEs in English, Traditional Chinese, Japanese, French, and Spanish.
 
+[1.1.0]: https://github.com/ohlulu/pi-keep-going/releases/tag/1.1.0
 [1.0.0]: https://github.com/ohlulu/pi-keep-going/releases/tag/1.0.0
