@@ -68,15 +68,15 @@ function printSheet(): void {
     console.log("");
   }
   console.log(`${DIM}in a widget:${RESET}\n`);
-  for (const row of joinSideBySide([[widgetLine(752)], renderCompanion("dog", 0)], 2)) {
-    console.log(`  ${row}`);
-  }
+  console.log(`  ${widgetLine(752)}`);
+  console.log("");
+  for (const row of renderCompanion("dog", 0)) console.log(`  ${row}`);
   console.log("");
 }
 
 function playLive(): void {
   const blocks = COMPANION_STYLES.map((s) => renderCompanion(s, 0));
-  const height = Math.max(...blocks.map((b) => b.length)) + 4;
+  const height = Math.max(...blocks.map((b) => b.length)) + 5;
 
   process.stdout.write("\x1b[?25l");
   const restore = (): void => {
@@ -97,6 +97,7 @@ function playLive(): void {
       `${DIM}live preview (${mode}) — Ctrl-C to quit${RESET}`,
       "",
       `  ${widgetLine(remaining)}`,
+      "",
       ...joinSideBySide(frames, 6).map((row) => `  ${row}`),
     ];
     while (lines.length < height) lines.push("");
