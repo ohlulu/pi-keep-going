@@ -63,6 +63,23 @@ déclenchement absolu vérifié toutes les 30 s, donc une tâche se déclenche
 correctement même après une mise en veille de la machine. Rien n'entre dans le
 contexte du LLM, hormis le message final réellement envoyé.
 
+## Widget de compte à rebours
+
+Tant qu'une tâche est en attente, un compte à rebours s'affiche au-dessus de
+l'éditeur, accompagné d'un petit animal animé — un chien ou un chat, tiré au
+hasard à chaque début de compte à rebours :
+
+```
+⏱ keep going in 7m 58s (14:23)
+```
+
+Le dessin est un pixel art original, rendu en demi-blocs truecolor : une cellule
+du terminal porte deux pixels. La profondeur de couleur se dégrade toute seule —
+24 bits quand le terminal l'annonce, 256 couleurs sinon, et un ASCII art plat en
+l'absence totale de couleur. Les images défilent toutes les 900 ms, et le
+minuteur n'existe que tant qu'une tâche est en attente : une session inactive
+n'est jamais sollicitée.
+
 ## Reprise automatique
 
 Quand un tour se termine sur une erreur de limite d'usage, l'extension :

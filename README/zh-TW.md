@@ -54,6 +54,20 @@ pi install ./pi-keep-going
 絕對觸發時間戳、以 30 秒 tick 檢查，因此機器睡眠後仍能正確觸發。除了最後真正送出的
 那則訊息之外，不會有任何東西進入 LLM context。
 
+## 倒數 widget
+
+只要有排程在等，編輯器上方就會出現倒數，旁邊帶一隻會動的小動物 —— 狗或貓，每次
+倒數開始時隨機挑一隻：
+
+```
+⏱ keep going in 7m 58s (14:23)
+```
+
+圖是原創的 pixel art，用 truecolor half-block 繪製，一個終端機字元格裝兩個像素。
+色彩會自動降級：終端機支援就用 24-bit，否則退到 256 色，完全沒有顏色時改用純
+ASCII 圖案。每 900ms 換一幀，而且只有在有排程時才會有 timer，閒置的 session 完全
+不受影響。
+
 ## Auto-resume
 
 一輪對話以 usage-limit 錯誤結束時，extension 會：

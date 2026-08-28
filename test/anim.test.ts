@@ -5,6 +5,7 @@ import {
   companionAsciiFrame,
   companionFrame,
   isCompanionStyle,
+  pickCompanion,
 } from "../src/anim";
 import { renderHalfBlocks, TRANSPARENT } from "../src/sprite";
 
@@ -110,5 +111,24 @@ describe("isCompanionStyle", () => {
     expect(isCompanionStyle("cat")).toBe(true);
     expect(isCompanionStyle("snoopy")).toBe(false);
     expect(isCompanionStyle(null)).toBe(false);
+  });
+});
+
+describe("pickCompanion", () => {
+  it("can return either companion", () => {
+    expect(pickCompanion(() => 0)).toBe("dog");
+    expect(pickCompanion(() => 0.99)).toBe("cat");
+  });
+
+  it("stays in range at the boundaries", () => {
+    // Math.random() is [0, 1), but a sloppy stub returning exactly 1 must not
+    // index past the end of the list.
+    expect(COMPANION_STYLES).toContain(pickCompanion(() => 1));
+    expect(COMPANION_STYLES).toContain(pickCompanion(() => 0));
+  });
+
+  it("covers both styles over many rolls", () => {
+    const seen = new Set(Array.from({ length: 200 }, () => pickCompanion()));
+    expect(seen.size).toBe(COMPANION_STYLES.length);
   });
 });

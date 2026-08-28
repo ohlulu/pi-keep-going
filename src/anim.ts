@@ -259,6 +259,16 @@ export function isCompanionStyle(value: unknown): value is CompanionStyle {
   return value === "dog" || value === "cat";
 }
 
+/**
+ * Pick a companion for one countdown. Rolled once when the widget appears, never
+ * per frame — rerolling mid-countdown would swap animals between blinks.
+ * `random` is injectable so the choice is testable.
+ */
+export function pickCompanion(random: () => number = Math.random): CompanionStyle {
+  const index = Math.min(COMPANION_STYLES.length - 1, Math.floor(random() * COMPANION_STYLES.length));
+  return COMPANION_STYLES[Math.max(0, index)];
+}
+
 function wrapIndex(tick: number, length: number): number {
   return ((Math.trunc(tick) % length) + length) % length;
 }
