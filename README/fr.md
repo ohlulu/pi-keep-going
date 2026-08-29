@@ -6,6 +6,8 @@ Une extension [Pi](https://pi.dev) qui maintient une exécution en vie malgré l
 limites d'usage des fournisseurs, et qui planifie à la demande des messages de
 relance ponctuels.
 
+![pi-keep-going atteint une limite d'usage Anthropic et décompte jusqu'à la reprise automatique](https://raw.githubusercontent.com/ohlulu/pi-keep-going/main/assets/demo.gif)
+
 ## Aucune configuration — ça tourne tout seul
 
 **Vous n'avez aucune commande à lancer.** La reprise automatique est active par

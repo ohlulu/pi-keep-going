@@ -5,6 +5,8 @@
 一個 [Pi](https://pi.dev) extension：在 provider 觸發 usage limit 後自動接手續跑，
 也能在你需要時排程一次性的後續訊息。
 
+![pi-keep-going 遇到 Anthropic usage limit 後倒數自動續跑](https://raw.githubusercontent.com/ohlulu/pi-keep-going/main/assets/demo.gif)
+
 ## 零設定 — 裝上就會動
 
 **你不需要下任何指令。** Auto-resume 預設開啟（`autoResume.enabled: true`），

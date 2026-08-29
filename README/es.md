@@ -6,6 +6,8 @@ Una extensión de [Pi](https://pi.dev) que mantiene viva una ejecución a pesar 
 los límites de uso del proveedor, y que programa mensajes de seguimiento
 puntuales cuando se lo pides.
 
+![pi-keep-going alcanza un límite de uso de Anthropic y hace la cuenta atrás hasta la reanudación automática](https://raw.githubusercontent.com/ohlulu/pi-keep-going/main/assets/demo.gif)
+
 ## Sin configuración — funciona sola
 
 **No tienes que ejecutar ningún comando.** La reanudación automática está

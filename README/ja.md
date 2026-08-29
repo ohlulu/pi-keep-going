@@ -5,6 +5,8 @@
 プロバイダの利用上限（usage limit）をまたいで実行を継続させ、必要なときには
 単発のフォローアップメッセージも予約できる [Pi](https://pi.dev) 拡張機能です。
 
+![Anthropic の利用上限に達したあと、自動再開までカウントダウンする pi-keep-going](https://raw.githubusercontent.com/ohlulu/pi-keep-going/main/assets/demo.gif)
+
 ## 設定不要 — 入れるだけで動く
 
 **コマンドを実行する必要はありません。** 自動再開（auto-resume）はデフォルトで

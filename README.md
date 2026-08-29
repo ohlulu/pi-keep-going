@@ -5,6 +5,8 @@
 A [Pi](https://pi.dev) extension that keeps a run alive across provider usage
 limits, and schedules one-shot follow-up messages when you ask for them.
 
+![pi-keep-going hitting an Anthropic usage limit and counting down to the auto-resume](https://raw.githubusercontent.com/ohlulu/pi-keep-going/main/assets/demo.gif)
+
 ## Zero setup — it just runs
 
 **You do not have to run any command.** Auto-resume is on by default
