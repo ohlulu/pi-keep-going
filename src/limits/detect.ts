@@ -10,7 +10,7 @@ import type { ResetInfo } from "./types";
  * so the caller can notify the user instead of silently doing nothing.
  */
 
-export type ProviderFamily = "codex" | "anthropic" | "gemini";
+export type ProviderFamily = "codex" | "anthropic" | "gemini" | "minimax";
 
 export interface Cached429 {
   status: number;
@@ -39,6 +39,7 @@ export function providerFamily(provider: string): ProviderFamily | null {
   if (provider === "openai-codex") return "codex";
   if (provider === "anthropic") return "anthropic";
   if (provider === "google" || provider === "google-gemini-cli") return "gemini";
+  if (provider === "minimax" || provider === "minimax-cn") return "minimax";
   return null;
 }
 
@@ -57,6 +58,8 @@ export function detectUsageLimit(input: DetectInput): UsageLimit | null {
       return detectAnthropic(message, status, input);
     case "gemini":
       return detectGemini(message, status, input.now);
+    case "minimax":
+      return detectMinimax(message, status);
   }
 }
 
@@ -186,6 +189,31 @@ function detectGemini(message: string, status: number | undefined, now: number):
     if (Number.isFinite(seconds)) return geminiBody(seconds);
   }
   return { provider: "gemini", reset: null };
+}
+
+// --- MiniMax ---------------------------------------------------------------
+
+/**
+ * MiniMax serves its anthropic-compatible API and surfaces rate-limit errors
+ * in the Anthropic error shape (`{type:"error",error:{type:"rate_limit_error",message:...}}`).
+ * Token Plan exhaustion carries an ISO reset time in the message as
+ * `"resets at YYYY-MM-DDTHH:MM:SSZ"` (sometimes followed by `"(<http_code>)"`).
+ * RPM/TPM-only errors carry no reset; the caller falls back to the usage API,
+ * which only covers Token Plan quotas, and notifies if that also fails.
+ */
+function detectMinimax(message: string, status: number | undefined): UsageLimit | null {
+  const isLimit =
+    status === 429 ||
+    /Token Plan|usage limit exceeded|RPM \/ TPM|rate_limit_error/i.test(message);
+  if (!isLimit) return null;
+  const match = message.match(/resets at (\S+)/);
+  if (match) {
+    const ms = Date.parse(match[1]);
+    if (!Number.isNaN(ms)) {
+      return { provider: "minimax", reset: { at: new Date(ms), source: "body" } };
+    }
+  }
+  return { provider: "minimax", reset: null };
 }
 
 /** Sum an `h/m/s` compound (allows zero and fractional seconds), e.g. `14h24m54s`, `600s`, `34.07s`. */

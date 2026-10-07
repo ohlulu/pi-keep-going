@@ -1,7 +1,7 @@
 {
   "name": "pi-keep-going",
   "version": "1.1.0",
-  "description": "Pi extension: one-shot /kg scheduling and usage-limit auto-resume for Anthropic, Codex, and Gemini.",
+  "description": "Pi extension: one-shot /kg scheduling and usage-limit auto-resume for Anthropic, Codex, Gemini, and MiniMax.",
   "type": "module",
   "license": "MIT",
   "author": "ohlulu",

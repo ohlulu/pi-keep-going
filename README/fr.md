@@ -109,6 +109,7 @@ la réinitialisation est plus lointaine que `maxWaitHours`.
 | OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | erreurs de limitation de débit, 429, en-têtes unified-reset | `GET /api/oauth/usage` → `five_hour.resets_at` (nécessite une connexion OAuth, pas une clé API) |
 | Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, erreurs de quota | `POST v1internal:retrieveUserQuota` → le `buckets[].resetTime` le plus proche (nécessite le project id de la connexion CLI) |
+| MiniMax (`minimax`, `minimax-cn`) | `usage limit exceeded`/`Token Plan`, `RPM / TPM`, 429 | `GET /v1/token_plan/remains` → le `model_remains[].end_time` le plus proche (clé Subscription Key Token Plan ; la variante CN passe par `minimaxi.com`) |
 
 Les jetons sont obtenus via `ctx.modelRegistry.getApiKeyForProvider()` (Pi gère
 le rafraîchissement OAuth) ; l'extension ne lit jamais `auth.json` et ne

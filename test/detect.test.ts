@@ -18,6 +18,8 @@ describe("providerFamily", () => {
     expect(providerFamily("anthropic")).toBe("anthropic");
     expect(providerFamily("google")).toBe("gemini");
     expect(providerFamily("google-gemini-cli")).toBe("gemini");
+    expect(providerFamily("minimax")).toBe("minimax");
+    expect(providerFamily("minimax-cn")).toBe("minimax");
     expect(providerFamily("mistral")).toBeNull();
   });
 });
@@ -169,5 +171,38 @@ describe("gemini", () => {
       input({ provider: "google", errorMessage: "RESOURCE_EXHAUSTED: quota exceeded" }),
     );
     expect(result).toEqual({ provider: "gemini", reset: null });
+  });
+});
+
+describe("minimax", () => {
+  const minimaxMessage =
+    "usage limit exceeded, 5-hour usage limit reached for Token Plan Starter (0/0 used), resets at 2026-05-15T15:00:00Z (2056)";
+
+  it("parses 'resets at <ISO>' from a Token Plan exhaustion message", () => {
+    const result = detectUsageLimit(
+      input({
+        provider: "minimax",
+        errorMessage: minimaxMessage,
+      }),
+    );
+    expect(result?.reset?.at.getTime()).toBe(Date.parse("2026-05-15T15:00:00Z"));
+    expect(result?.reset?.source).toBe("body");
+  });
+
+  it("flags a plain RPM/TPM 429 with unknown reset so the caller falls back to the usage API", () => {
+    const result = detectUsageLimit(
+      input({
+        provider: "minimax-cn",
+        errorMessage: "RPM / TPM / connection-count or other rate limit triggered.",
+        cached429: { status: 429, headers: {}, at: 1_000_000 },
+      }),
+    );
+    expect(result).toEqual({ provider: "minimax", reset: null });
+  });
+
+  it("ignores unrelated errors on minimax", () => {
+    expect(
+      detectUsageLimit(input({ provider: "minimax", errorMessage: "fetch failed: ECONNRESET" })),
+    ).toBeNull();
   });
 });

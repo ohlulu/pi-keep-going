@@ -102,6 +102,7 @@ when the per-session cap is reached or the reset is further away than
 | OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit errors, 429, unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at` (needs an OAuth login, not an API key) |
 | Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, quota errors | `POST v1internal:retrieveUserQuota` → earliest `buckets[].resetTime` (needs the CLI login's project id) |
+| MiniMax (`minimax`, `minimax-cn`) | `usage limit exceeded`/`Token Plan`, `RPM / TPM`, 429 | `GET /v1/token_plan/remains` → earliest `model_remains[].end_time` (Token Plan Subscription Key; CN variant uses `minimaxi.com`) |
 
 Tokens are resolved through `ctx.modelRegistry.getApiKeyForProvider()` (Pi
 handles OAuth refresh); the extension never reads `auth.json` or refreshes tokens

@@ -4,7 +4,13 @@ import { decodeJwtPayload } from "../src/limits/client";
 import { fetchCodexReset, codexAccountId, CODEX_USAGE_URL } from "../src/limits/codex";
 import { fetchAnthropicReset, ANTHROPIC_USAGE_URL } from "../src/limits/anthropic";
 import { fetchGeminiReset, geminiResetFromBody, GEMINI_QUOTA_URL } from "../src/limits/gemini";
-
+import {
+  fetchMinimaxReset,
+  minimaxResetFromBody,
+  MINIMAX_USAGE_URL,
+  MINIMAX_CN_USAGE_URL,
+  minimaxUsageUrl,
+} from "../src/limits/minimax";
 function makeJwt(payload: object): string {
   const b64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   return `header.${b64}.sig`;
@@ -213,5 +219,119 @@ describe("fetchGeminiReset", () => {
     expect(geminiResetFromBody({ buckets: [] })).toBeNull();
     expect(geminiResetFromBody({ buckets: [{ resetTime: "2026-01-01T00:00:00Z" }] })?.source).toBe("body");
     expect(geminiResetFromBody({})).toBeNull();
+  });
+});
+
+describe("minimaxUsageUrl", () => {
+  it("routes minimax to the global endpoint and minimax-cn to the China endpoint", () => {
+    expect(minimaxUsageUrl("minimax")).toBe(MINIMAX_USAGE_URL);
+    expect(minimaxUsageUrl("minimax-cn")).toBe(MINIMAX_CN_USAGE_URL);
+  });
+});
+
+describe("minimaxResetFromBody", () => {
+  it("picks the earliest end_time across model_remains entries", () => {
+    const early = 1_783_180_800_000;
+    const late = 1_783_180_800_000 + 5 * 60_000;
+    expect(
+      minimaxResetFromBody({
+        model_remains: [
+          { model_name: "speech-hd", end_time: late, weekly_end_time: late },
+          { model_name: "MiniMax-M3", end_time: early, weekly_end_time: late },
+        ],
+      })?.at.getTime(),
+    ).toBe(early);
+  });
+
+  it("falls back to weekly_end_time when 5-hour end_time is missing", () => {
+    const weekly = 1_786_000_000_000;
+    expect(
+      minimaxResetFromBody({
+        model_remains: [{ model_name: "image-01", weekly_end_time: weekly }],
+      })?.at.getTime(),
+    ).toBe(weekly);
+  });
+
+  it("returns null when no model_remains are present or none carry a reset", () => {
+    expect(minimaxResetFromBody({})).toBeNull();
+    expect(minimaxResetFromBody({ model_remains: [] })).toBeNull();
+    expect(minimaxResetFromBody({ model_remains: [{ model_name: "x" }] })).toBeNull();
+  });
+});
+
+describe("fetchMinimaxReset", () => {
+  const token = "minimax-sub-key";
+
+  it("sends a Bearer header, hits the correct domain for each provider id, and parses end_time", async () => {
+    let seenUrl = "";
+    let seenHeaders: Record<string, string> = {};
+    const fetchImpl = mockFetch(
+      {
+        status: 200,
+        body: {
+          base_resp: { status_code: 0, status_msg: "success" },
+          model_remains: [{ model_name: "MiniMax-M3", end_time: 1_783_180_800_000 }],
+        },
+      },
+      (url, init) => {
+        seenUrl = url;
+        seenHeaders = init?.headers ?? {};
+      },
+    );
+    const result = await fetchMinimaxReset({ token, provider: "minimax", fetchImpl });
+    expect(result).toEqual({
+      ok: true,
+      reset: { at: new Date(1_783_180_800_000), source: "body" },
+    });
+    expect(seenUrl).toBe(MINIMAX_USAGE_URL);
+    expect(seenHeaders.Authorization).toBe(`Bearer ${token}`);
+    expect(seenHeaders["Content-Type"]).toBe("application/json");
+
+    seenUrl = "";
+    const fetchImplCn = mockFetch(
+      {
+        status: 200,
+        body: { base_resp: { status_code: 0 }, model_remains: [] },
+      },
+      (url) => {
+        seenUrl = url;
+      },
+    );
+    await fetchMinimaxReset({ token, provider: "minimax-cn", fetchImpl: fetchImplCn });
+    expect(seenUrl).toBe(MINIMAX_CN_USAGE_URL);
+  });
+
+  it("reports a clear error on 401/403", async () => {
+    const result = await fetchMinimaxReset({
+      token,
+      provider: "minimax",
+      fetchImpl: mockFetch({ status: 401 }),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/401\/403/);
+  });
+
+  it("treats a non-zero base_resp.status_code as a soft error", async () => {
+    const fetchImpl = mockFetch({
+      status: 200,
+      body: { base_resp: { status_code: 1004, status_msg: "login fail" } },
+    });
+    const result = await fetchMinimaxReset({ token, provider: "minimax", fetchImpl });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/1004/);
+  });
+
+  it("errors when the body has no reset time", async () => {
+    const fetchImpl = mockFetch({ status: 200, body: { base_resp: { status_code: 0 } } });
+    const result = await fetchMinimaxReset({ token, provider: "minimax", fetchImpl });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/no end_time/i);
+  });
+
+  it("surfaces a network error", async () => {
+    const fetchImpl = mockFetch({ status: 0, throwErr: new Error("ECONNRESET") });
+    const result = await fetchMinimaxReset({ token, provider: "minimax", fetchImpl });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/ECONNRESET/);
   });
 });

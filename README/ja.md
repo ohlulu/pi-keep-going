@@ -98,6 +98,7 @@ pi install ./pi-keep-going
 | OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | レート制限エラー、429、unified-reset ヘッダー | `GET /api/oauth/usage` → `five_hour.resets_at`（API キーではなく OAuth ログインが必要） |
 | Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、クォータエラー | `POST v1internal:retrieveUserQuota` → 最も早い `buckets[].resetTime`（CLI ログインの project id が必要） |
+| MiniMax (`minimax`、`minimax-cn`) | `usage limit exceeded`/`Token Plan`、`RPM / TPM`、429 | `GET /v1/token_plan/remains` → 最も早い `model_remains[].end_time`（Token Plan Subscription Key が必要。CN 版は `minimaxi.com`） |
 
 トークンは `ctx.modelRegistry.getApiKeyForProvider()` 経由で取得します（OAuth の
 リフレッシュは Pi が担当）。拡張機能が `auth.json` を直接読んだり、自前でトークンを

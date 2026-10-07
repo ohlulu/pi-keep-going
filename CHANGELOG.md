@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased]
+
+### Added
+
+- MiniMax Token Plan auto-resume. Detects MiniMax usage-limit errors
+  (`minimax`, `minimax-cn`) from the Anthropic-shaped error body — parsing the
+  embedded `resets at <ISO>` timestamp — and falls back to a `GET
+  /v1/token_plan/remains` lookup against `api.minimax.io` (or `api.minimaxi.com`
+  for the CN provider) using the user's Subscription Key. The earliest
+  `end_time` / `weekly_end_time` across `model_remains` entries is used as the
+  reset time. Works with the auto-resume fallback and `/kg auto`.
 
 ## [1.1.0] — 2026-08-28
 

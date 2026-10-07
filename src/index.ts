@@ -22,6 +22,7 @@ import { errText, type UsageResult } from "./limits/client";
 import { fetchCodexReset } from "./limits/codex";
 import { fetchAnthropicReset } from "./limits/anthropic";
 import { fetchGeminiReset } from "./limits/gemini";
+import { fetchMinimaxReset } from "./limits/minimax";
 import {
   loadSettings,
   defaultSettingsIO,
@@ -419,6 +420,7 @@ export default function (pi: ExtensionAPI): void {
   ): Promise<UsageResult> {
     if (family === "codex") return fetchCodexReset({ token, signal, now });
     if (family === "anthropic") return fetchAnthropicReset({ token, signal, now });
+    if (family === "minimax") return fetchMinimaxReset({ token, provider, signal, now });
     // gemini: projectId is an index-signature field on the OAuth credential.
     // One-off read-only lookup (no refresh); modelRegistry.authStorage was removed in pi 0.80.8.
     const cred = readStoredCredential(provider);

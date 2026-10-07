@@ -92,6 +92,7 @@ reset 時間比 `maxWaitHours` 還遠時，會改成通知而不是排程。
 | OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit 錯誤、429、unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at`（需要 OAuth 登入，不能是 API key） |
 | Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、quota 錯誤 | `POST v1internal:retrieveUserQuota` → 最早的 `buckets[].resetTime`（需要 CLI 登入的 project id） |
+| MiniMax (`minimax`、`minimax-cn`) | `usage limit exceeded`/`Token Plan`、`RPM / TPM`、429 | `GET /v1/token_plan/remains` → 最早的 `model_remains[].end_time`（需要 Token Plan Subscription Key；CN 版本走 `minimaxi.com`） |
 
 Token 一律透過 `ctx.modelRegistry.getApiKeyForProvider()` 取得（OAuth refresh 由 Pi
 處理）；extension 不會自己讀 `auth.json`，也不會自己 refresh token。若 usage API 連
