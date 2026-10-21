@@ -82,6 +82,7 @@ function freshHeaders(input: DetectInput): Record<string, string> | null {
 function detectCodex(message: string, status: number | undefined, now: number): UsageLimit | null {
   const isLimit =
     /hit your ChatGPT usage limit/i.test(message) ||
+    /\busage limit has been reached\b/i.test(message) ||
     /(usage_limit_reached|usage_not_included|rate_limit_exceeded)/i.test(message) ||
     status === 429;
   if (!isLimit) return null;
