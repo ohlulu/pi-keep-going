@@ -58,6 +58,23 @@ describe("codex", () => {
     );
     expect(result).toEqual({ provider: "codex", reset: null });
   });
+
+  it("flags the WebSocket-transport wording with unknown reset", () => {
+    const result = detectUsageLimit(
+      input({ errorMessage: "Codex error: The usage limit has been reached", cached429: null }),
+    );
+    expect(result).toEqual({ provider: "codex", reset: null });
+  });
+
+  it("ignores non-limit Codex errors", () => {
+    expect(
+      detectUsageLimit(input({ errorMessage: "Codex error: Internal server error", cached429: null })),
+    ).toBeNull();
+    // Terminal monthly quota: no short reset window to resume into.
+    expect(
+      detectUsageLimit(input({ errorMessage: "Codex error: Monthly usage limit reached", cached429: null })),
+    ).toBeNull();
+  });
 });
 
 describe("anthropic", () => {

@@ -80,8 +80,12 @@ function freshHeaders(input: DetectInput): Record<string, string> | null {
 // --- Codex -----------------------------------------------------------------
 
 function detectCodex(message: string, status: number | undefined, now: number): UsageLimit | null {
+  // The WebSocket transport surfaces the server's own wording ("Codex error: The
+  // usage limit has been reached") with no HTTP status and the code kept off the
+  // message, so it needs its own pattern; it carries no reset time.
   const isLimit =
     /hit your ChatGPT usage limit/i.test(message) ||
+    /usage limit has been reached/i.test(message) ||
     /(usage_limit_reached|usage_not_included|rate_limit_exceeded)/i.test(message) ||
     status === 429;
   if (!isLimit) return null;
