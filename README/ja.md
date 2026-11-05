@@ -95,7 +95,7 @@ pi install ./pi-keep-going
 
 | プロバイダ | 検出方法 | `auto` の usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage limit has been reached`（WebSocket）、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | レート制限エラー、429、unified-reset ヘッダー | `GET /api/oauth/usage` → `five_hour.resets_at`（API キーではなく OAuth ログインが必要） |
 | Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、クォータエラー | `POST v1internal:retrieveUserQuota` → 最も早い `buckets[].resetTime`（CLI ログインの project id が必要） |
 

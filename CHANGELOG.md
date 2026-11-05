@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Auto-resume now triggers for Codex usage limits reported over WebSocket
+  (`Codex error: The usage limit has been reached`). That message carries no
+  reset time, so the reset is read from the Codex usage API.
+
 ## [1.1.0] — 2026-08-28
 
 ### Added

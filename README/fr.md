@@ -106,7 +106,7 @@ la réinitialisation est plus lointaine que `maxWaitHours`.
 
 | Fournisseur | Détection | API d'usage pour `auto` |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage limit has been reached` (WebSocket), `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | erreurs de limitation de débit, 429, en-têtes unified-reset | `GET /api/oauth/usage` → `five_hour.resets_at` (nécessite une connexion OAuth, pas une clé API) |
 | Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, erreurs de quota | `POST v1internal:retrieveUserQuota` → le `buckets[].resetTime` le plus proche (nécessite le project id de la connexion CLI) |
 

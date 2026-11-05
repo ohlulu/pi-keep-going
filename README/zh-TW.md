@@ -89,7 +89,7 @@ reset 時間比 `maxWaitHours` 還遠時，會改成通知而不是排程。
 
 | Provider | 偵測方式 | `auto` usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`、`usage limit has been reached`（WebSocket）、`usage_limit_reached`、429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit 錯誤、429、unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at`（需要 OAuth 登入，不能是 API key） |
 | Google Gemini (`google-gemini-cli`、`google`) | `RESOURCE_EXHAUSTED`、quota 錯誤 | `POST v1internal:retrieveUserQuota` → 最早的 `buckets[].resetTime`（需要 CLI 登入的 project id） |
 

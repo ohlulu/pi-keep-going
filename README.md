@@ -99,7 +99,7 @@ when the per-session cap is reached or the reset is further away than
 
 | Provider | Detection | `auto` usage API |
 | --- | --- | --- |
-| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
+| OpenAI Codex (`openai-codex`) | `hit your ChatGPT usage limit`, `usage limit has been reached` (WebSocket), `usage_limit_reached`, 429 | `GET /backend-api/wham/usage` → `rate_limit.primary_window.reset_at` |
 | Anthropic (`anthropic`) | rate-limit errors, 429, unified-reset headers | `GET /api/oauth/usage` → `five_hour.resets_at` (needs an OAuth login, not an API key) |
 | Google Gemini (`google-gemini-cli`, `google`) | `RESOURCE_EXHAUSTED`, quota errors | `POST v1internal:retrieveUserQuota` → earliest `buckets[].resetTime` (needs the CLI login's project id) |
 
