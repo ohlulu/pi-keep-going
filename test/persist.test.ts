@@ -39,6 +39,15 @@ describe("reduceJobEntries", () => {
     expect(fired).toHaveLength(0);
   });
 
+  it("keeps /kg auto jobs across a rebuild", () => {
+    const jobs = reduceJobEntries([
+      entry({ event: "created", id: "a", fireAt: 1000, message: "keep going", kind: "auto" }),
+    ]);
+    expect(jobs).toEqual([
+      { id: "a", fireAt: 1000, message: "keep going", kind: "auto", state: "created" },
+    ]);
+  });
+
   it("keeps other jobs live when one is interleaved-fired, sorted by fireAt", () => {
     const jobs = reduceJobEntries([
       entry(created("a", 3000)),

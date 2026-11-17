@@ -57,7 +57,7 @@ function isJobEvent(data: unknown): data is JobEvent {
       typeof e.id === "string" &&
       typeof e.fireAt === "number" &&
       typeof e.message === "string" &&
-      (e.kind === "manual" || e.kind === "auto-resume")
+      (e.kind === "manual" || e.kind === "auto" || e.kind === "auto-resume")
     );
   }
   if (e.event === "cancelled" || e.event === "fired") {
