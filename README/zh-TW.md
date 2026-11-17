@@ -81,9 +81,16 @@ ASCII 圖案。每 900ms 換一幀，而且只有在有排程時才會有 timer�
    那個 response，所以 unified-reset headers 永遠不會被快取，而 error body 裡也沒有
    reset 時間。
 3. 在 `reset + bufferSeconds` 排一則續跑訊息，並套用下面的設定作為防護。
+4. 若讀不到 reset 時間（例如 usage API 本身也被限流），改排一次重試：第一次 30 分鐘後，
+   之後每次連續重試加倍（1 小時、2 小時……）。只要有一輪成功，等待時間就重新計算。
 
-前一次 auto-resume 之後的 5 分鐘內會靜默跳過（迴圈保護）；當 session 上限用完、或
-reset 時間比 `maxWaitHours` 還遠時，會改成通知而不是排程。
+前一次 auto-resume 之後的 5 分鐘內會跳過（迴圈保護）；當 session 上限用完、或等待時間
+會超過 `maxWaitHours` 時，會改成通知而不是排程。`enabled`、session 次數上限與 5 分鐘迴圈
+保護會在打 usage API 之前先判斷；`maxWaitHours` 需要 reset 時間，所以在之後才判斷。
+
+Auto-resume 只在有 UI 的 session（互動式 TUI 與 RPC）運作。print 與 JSON 模式（包含
+subagent 的 child session）跑完一個 prompt 就結束，排了訊息也永遠送不出去，所以
+extension 在這些 session 裡完全不動作。
 
 ## Provider 支援
 
@@ -126,6 +133,10 @@ auto-resume 或換一則續跑訊息。
   signal；若請求還在飛的時候 session 已經被換掉，結果會直接丟棄。
 - **Single-firer lease** — 若有兩個 Pi process 掛在同一個 session 上，advisory lock
   會選出唯一的觸發者，另一個以唯讀模式執行，確保每則排程訊息只送一次。
+- **決策紀錄** — extension 處理的每個 usage-limit 錯誤，都會留下一筆
+  `keep-going-auto-resume` session entry，記錄採取的動作、reset 時間的來源，以及
+  usage API 查詢失敗的原因。這筆 entry 不會進到模型 context；它讓沒有自動續跑的原因
+  能從 session 檔追查，也確保同一個錯誤就算重啟也只處理一次。
 
 ## 開發
 

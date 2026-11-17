@@ -96,11 +96,23 @@ Quand un tour se termine sur une erreur de limite d'usage, l'extension :
    réinitialisation.
 3. Planifie un message de continuation à `réinitialisation + bufferSeconds`,
    encadré par les réglages ci-dessous.
+4. Si l'heure de réinitialisation est illisible (par exemple parce que l'API
+   d'usage est elle-même limitée), planifie une nouvelle tentative : 30 minutes
+   la première fois, puis le double à chaque tentative consécutive (1 h, 2 h, …).
+   Un tour réussi remet l'attente à zéro.
 
-La reprise automatique est ignorée en silence dans les 5 minutes qui suivent une
-reprise précédente (protection anti-boucle), et se transforme en notification
-(au lieu d'une planification) lorsque le plafond par session est atteint ou que
-la réinitialisation est plus lointaine que `maxWaitHours`.
+La reprise automatique est ignorée dans les 5 minutes qui suivent une reprise
+précédente (protection anti-boucle), et se transforme en notification (au lieu
+d'une planification) lorsque le plafond par session est atteint ou que l'attente
+dépasserait `maxWaitHours`. L'interrupteur `enabled`, le plafond par session et
+la fenêtre de 5 minutes sont vérifiés avant toute requête à l'API d'usage ;
+`maxWaitHours` a besoin de l'heure de réinitialisation et n'est donc vérifié
+qu'ensuite.
+
+La reprise automatique ne fonctionne que dans les sessions dotées d'une interface
+(TUI interactive et RPC). Les modes print et JSON — y compris les enfants de
+sous-agents — se terminent après un seul prompt, donc un message planifié ne
+partirait jamais ; l'extension reste inactive dans ces sessions.
 
 ## Fournisseurs pris en charge
 
@@ -149,6 +161,12 @@ gagnent ; les champs inconnus ou invalides sont ignorés.
 - **Bail de déclencheur unique** — si deux processus Pi s'attachent à la même
   session, un verrou consultatif élit un seul déclencheur ; l'autre fonctionne
   en lecture seule, de sorte qu'une tâche est envoyée exactement une fois.
+- **Journal des décisions** — chaque erreur de limite d'usage traitée par
+  l'extension laisse une entrée de session `keep-going-auto-resume` indiquant
+  l'action, la provenance de l'heure de réinitialisation et la raison d'un échec
+  de l'API d'usage. L'entrée n'atteint jamais le contexte du modèle ; elle permet
+  de diagnostiquer une reprise manquée depuis le fichier de session et garantit
+  qu'une erreur n'est traitée qu'une fois, même après un redémarrage.
 
 ## Développement
 

@@ -16,8 +16,19 @@ import { detectColorMode, type ColorMode } from "./sprite";
 import { humanizeDuration } from "./duration";
 import { parseKgCommand } from "./command";
 import { detectUsageLimit, providerFamily, type Cached429, type ProviderFamily } from "./limits/detect";
-import type { ResetInfo } from "./limits/types";
-import { decideAutoResume, type AutoResumeState } from "./guards";
+import {
+  checkAutoResumeGates,
+  decideAutoResume,
+  type AutoResumeDecision,
+  type AutoResumeState,
+} from "./guards";
+import {
+  fallbackStreak,
+  isErrorHandled,
+  recordResumeDecision,
+  type ResetSource,
+  type ResumeDecisionEntry,
+} from "./resume-log";
 import { errText, type UsageResult } from "./limits/client";
 import { fetchCodexReset } from "./limits/codex";
 import { fetchAnthropicReset } from "./limits/anthropic";
@@ -183,11 +194,20 @@ export default function (pi: ExtensionAPI): void {
     autoResume = { count: 0, lastResumeAt: null };
     generation += 1;
     sessionAbort?.abort();
+    scheduler?.stop();
+    scheduler = null;
+    sessionLeasePath = null;
+    // A session without a UI (print/json mode, subagent children) runs one prompt
+    // and exits, so a scheduled job could never fire there; stay fully inert
+    // instead of querying usage APIs, writing leases, or replaying due jobs.
+    if (!sessionCtx.hasUI) {
+      sessionAbort = null;
+      return;
+    }
     sessionAbort = new AbortController();
     sessionId = sessionCtx.sessionManager.getSessionId();
     sessionLeasePath = leasePath(getAgentDir(), sessionId);
     refreshLeaseRole();
-    scheduler?.stop();
     scheduler = createScheduler();
     scheduler.load(rebuildFromBranch(sessionCtx.sessionManager));
     scheduler.start();
@@ -222,7 +242,8 @@ export default function (pi: ExtensionAPI): void {
     ctx = settledCtx;
     if (!scheduler) return;
 
-    const error = lastAssistantError(settledCtx.sessionManager.getBranch());
+    const branch = settledCtx.sessionManager.getBranch();
+    const error = lastAssistantError(branch);
     if (!error) return;
 
     const detection = detectUsageLimit({
@@ -233,17 +254,52 @@ export default function (pi: ExtensionAPI): void {
       now: Date.now(),
     });
     if (!detection) return;
+    if (isErrorHandled(branch, error.entryId)) return;
+
+    const record = (
+      decision: AutoResumeDecision,
+      extra: Pick<ResumeDecisionEntry, "resetSource" | "usageError"> = {},
+    ): void => {
+      recordResumeDecision(pi, {
+        errorEntryId: error.entryId,
+        provider: detection.provider,
+        action: decision.action,
+        ...(decision.action === "schedule"
+          ? { fireAt: decision.fireAt }
+          : { reason: decision.reason }),
+        ...extra,
+      });
+    };
+
+    const gate = checkAutoResumeGates({
+      settings: settings.autoResume,
+      state: autoResume,
+      now: Date.now(),
+    });
+    if (gate) {
+      record(gate);
+      if (gate.action === "notify") settledCtx.ui.notify(gate.reason, "warning");
+      return;
+    }
 
     // Passive channels can come up empty: provider SDKs throw on 429 before
     // pi-ai's onResponse runs, so `after_provider_response` never fires with
     // 429 headers (cached429 stays null), and e.g. Anthropic's rate_limit_error
-    // body carries no reset time. Fall back to the provider usage API before
-    // giving up on auto-resume.
+    // body carries no reset time. Fall back to the provider usage API; when
+    // that fails too, the policy schedules a backoff retry instead.
     let reset = detection.reset;
+    let resetSource: ResetSource | undefined = reset?.source;
+    let usageError: string | undefined;
     if (!reset) {
       const gen = generation;
-      reset = await fetchResetViaUsageApi(settledCtx);
+      const lookup = await lookupResetViaUsageApi(settledCtx);
       if (gen !== generation || !scheduler) return; // session replaced meanwhile
+      if (lookup.ok) {
+        reset = lookup.reset;
+        resetSource = "usage-api";
+      } else {
+        usageError = lookup.error;
+      }
     }
 
     const decision = decideAutoResume({
@@ -251,7 +307,12 @@ export default function (pi: ExtensionAPI): void {
       settings: settings.autoResume,
       state: autoResume,
       now: Date.now(),
+      fallbackStreak: fallbackStreak(branch),
     });
+    if (decision.action === "schedule" && decision.basis === "fallback") {
+      resetSource = "fallback";
+    }
+    record(decision, { resetSource, usageError });
 
     if (decision.action === "schedule") {
       scheduler.add({
@@ -261,13 +322,15 @@ export default function (pi: ExtensionAPI): void {
       });
       autoResume = { count: autoResume.count + 1, lastResumeAt: Date.now() };
       settledCtx.ui.notify(
-        `Usage limit reached (${detection.provider}) — auto-resuming at ${clock(decision.fireAt)}.`,
+        decision.basis === "fallback"
+          ? `Usage limit reached (${detection.provider}) but the reset time is unknown (${usageError ?? "no reset time"}) — retrying at ${clock(decision.fireAt)}.`
+          : `Usage limit reached (${detection.provider}) — auto-resuming at ${clock(decision.fireAt)}.`,
         "info",
       );
     } else if (decision.action === "notify") {
       settledCtx.ui.notify(decision.reason, "warning");
     }
-    // "skip" is intentionally silent.
+    // "skip" is not notified; the decision entry records it.
   });
 
   pi.registerCommand("kg", {
@@ -281,6 +344,8 @@ export default function (pi: ExtensionAPI): void {
       return items.length > 0 ? items : null;
     },
     handler: async (args, commandCtx) => {
+      // Without a UI the process exits after this prompt; nothing would fire.
+      if (!commandCtx.hasUI) return;
       ctx = commandCtx;
       if (!scheduler) {
         scheduler = createScheduler();
@@ -394,18 +459,17 @@ export default function (pi: ExtensionAPI): void {
     }
   }
 
-  /** Best-effort usage-API lookup for auto-resume; null on any failure. */
-  async function fetchResetViaUsageApi(c: ExtensionContext): Promise<ResetInfo | null> {
+  /** Usage-API lookup for auto-resume; failures carry a reason for the decision log. */
+  async function lookupResetViaUsageApi(c: ExtensionContext): Promise<UsageResult> {
     const provider = c.model?.provider;
     const family = provider ? providerFamily(provider) : null;
-    if (!provider || !family) return null;
+    if (!provider || !family) return { ok: false, error: "No usage API for this provider." };
     try {
       const token = await c.modelRegistry.getApiKeyForProvider(provider);
-      if (!token) return null;
-      const result = await resolveAutoReset(c, provider, family, token, autoSignal(), Date.now());
-      return result.ok ? result.reset : null;
-    } catch {
-      return null;
+      if (!token) return { ok: false, error: `No credential available for ${provider}.` };
+      return await resolveAutoReset(c, provider, family, token, autoSignal(), Date.now());
+    } catch (e) {
+      return { ok: false, error: errText(e) };
     }
   }
 
@@ -429,11 +493,15 @@ export default function (pi: ExtensionAPI): void {
 
   function lastAssistantError(
     branch: SessionEntry[],
-  ): { stopReason?: string; errorMessage?: string } | null {
+  ): { entryId: string; stopReason?: string; errorMessage?: string } | null {
     for (let i = branch.length - 1; i >= 0; i -= 1) {
       const entry = branch[i];
       if (entry.type === "message" && entry.message.role === "assistant") {
-        return { stopReason: entry.message.stopReason, errorMessage: entry.message.errorMessage };
+        return {
+          entryId: entry.id,
+          stopReason: entry.message.stopReason,
+          errorMessage: entry.message.errorMessage,
+        };
       }
     }
     return null;

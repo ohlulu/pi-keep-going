@@ -95,11 +95,23 @@ Cuando un turno termina con un error de límite de uso, la extensión:
    cachean y el cuerpo del error no lleva ninguna hora de reinicio.
 3. Programa un mensaje de continuación en `reinicio + bufferSeconds`, protegido
    por los ajustes de abajo.
+4. Si no se puede leer la hora de reinicio (por ejemplo, porque la propia API de
+   uso está limitada), programa un reintento: 30 minutos el primero, y el doble
+   en cada reintento consecutivo (1 h, 2 h, …). Un turno exitoso reinicia la
+   espera.
 
-La reanudación automática se omite en silencio dentro de los 5 minutos
-posteriores a una reanudación previa (protección contra bucles), y se convierte
-en una notificación (en lugar de una programación) cuando se alcanza el tope por
-sesión o cuando el reinicio queda más lejos que `maxWaitHours`.
+La reanudación automática se omite dentro de los 5 minutos posteriores a una
+reanudación previa (protección contra bucles), y se convierte en una
+notificación (en lugar de una programación) cuando se alcanza el tope por sesión
+o cuando la espera superaría `maxWaitHours`. El interruptor `enabled`, el tope
+por sesión y la ventana de 5 minutos se comprueban antes de cualquier petición a
+la API de uso; `maxWaitHours` necesita la hora de reinicio, así que se comprueba
+después.
+
+La reanudación automática solo funciona en sesiones con interfaz (TUI
+interactiva y RPC). Los modos print y JSON — incluidos los hijos de subagentes —
+terminan tras un solo prompt, así que un mensaje programado nunca llegaría a
+enviarse; en esas sesiones la extensión no hace nada.
 
 ## Proveedores soportados
 
@@ -148,6 +160,12 @@ los campos desconocidos o inválidos se ignoran.
 - **Arrendamiento de disparador único** — si dos procesos de Pi se conectan a la
   misma sesión, un bloqueo consultivo elige un único disparador; el otro
   funciona en solo lectura, de forma que un trabajo se envía exactamente una vez.
+- **Registro de decisiones** — cada error de límite de uso que la extensión
+  gestiona deja una entrada de sesión `keep-going-auto-resume` con la acción
+  tomada, el origen de la hora de reinicio y el motivo por el que falló la
+  consulta a la API de uso. La entrada nunca llega al contexto del modelo; permite
+  diagnosticar una reanudación perdida desde el archivo de sesión y garantiza que
+  cada error se gestione una sola vez, incluso tras un reinicio.
 
 ## Desarrollo
 

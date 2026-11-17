@@ -15,20 +15,30 @@ export interface AutoResumeState {
 }
 
 export type AutoResumeDecision =
-  | { action: "schedule"; fireAt: number }
+  | { action: "schedule"; fireAt: number; basis: "reset" | "fallback" }
   | { action: "notify"; reason: string }
   | { action: "skip"; reason: string };
 
 /** Consecutive auto-resumes closer than this look like a hot loop; pause. */
 export const MIN_RESUME_INTERVAL_MS = 5 * 60 * 1000;
 
-export function decideAutoResume(args: {
-  reset: ResetInfo | null;
+/**
+ * First retry delay when the reset time cannot be read. Each consecutive
+ * fallback doubles it (30m, 1h, 2h, …), bounded by `maxWaitHours`.
+ */
+export const FALLBACK_BASE_DELAY_MS = 30 * 60 * 1000;
+
+/**
+ * Guards that do not depend on the reset time. Checked before any usage-API
+ * lookup so a disabled or capped session never queries the provider.
+ * Returns null when auto-resume may proceed.
+ */
+export function checkAutoResumeGates(args: {
   settings: AutoResumeSettings;
   state: AutoResumeState;
   now: number;
-}): AutoResumeDecision {
-  const { reset, settings, state, now } = args;
+}): Exclude<AutoResumeDecision, { action: "schedule" }> | null {
+  const { settings, state, now } = args;
 
   if (!settings.enabled) {
     return { action: "skip", reason: "auto-resume disabled" };
@@ -48,16 +58,37 @@ export function decideAutoResume(args: {
     };
   }
 
+  return null;
+}
+
+export function decideAutoResume(args: {
+  reset: ResetInfo | null;
+  settings: AutoResumeSettings;
+  state: AutoResumeState;
+  now: number;
+  /** Fallback resumes already scheduled since the last successful turn. */
+  fallbackStreak: number;
+}): AutoResumeDecision {
+  const { reset, settings, state, now, fallbackStreak } = args;
+
+  const gate = checkAutoResumeGates({ settings, state, now });
+  if (gate) return gate;
+
+  const maxWaitMs = settings.maxWaitHours * 3600 * 1000;
+
   if (!reset) {
-    return {
-      action: "notify",
-      reason: "Hit a usage limit but could not read the reset time. Use /kg <duration> to schedule a retry.",
-    };
+    const delayMs = FALLBACK_BASE_DELAY_MS * 2 ** fallbackStreak;
+    if (delayMs > maxWaitMs) {
+      return {
+        action: "notify",
+        reason: `Hit a usage limit but could not read the reset time, and the next retry would exceed ${settings.maxWaitHours}h. Use /kg <duration> to schedule a retry.`,
+      };
+    }
+    return { action: "schedule", fireAt: now + delayMs, basis: "fallback" };
   }
 
   const fireAtRaw = reset.at.getTime() + settings.bufferSeconds * 1000;
   const waitMs = fireAtRaw - now;
-  const maxWaitMs = settings.maxWaitHours * 3600 * 1000;
   if (waitMs > maxWaitMs) {
     return {
       action: "notify",
@@ -66,5 +97,5 @@ export function decideAutoResume(args: {
   }
 
   // A reset already in the past fires on the next tick.
-  return { action: "schedule", fireAt: now + Math.max(0, waitMs) };
+  return { action: "schedule", fireAt: now + Math.max(0, waitMs), basis: "reset" };
 }

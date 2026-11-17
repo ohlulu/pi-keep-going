@@ -89,11 +89,19 @@ When a turn ends on a usage-limit error, the extension:
    cached and the error body carries no reset time.
 3. Schedules a continuation message at `reset + bufferSeconds`, guarded by the
    settings below.
+4. If no reset time can be read (e.g. the usage API itself is rate-limited), it
+   schedules a retry instead: 30 minutes for the first one, doubling for each
+   consecutive retry (1h, 2h, …). A successful turn resets the backoff.
 
-Auto-resume is skipped silently inside a 5-minute window after a previous
-resume (loop protection), and turns into a notification (rather than a schedule)
-when the per-session cap is reached or the reset is further away than
-`maxWaitHours`.
+Auto-resume is skipped inside a 5-minute window after a previous resume (loop
+protection), and turns into a notification (rather than a schedule) when the
+per-session cap is reached or the wait would exceed `maxWaitHours`. The enabled
+switch, the per-session cap, and the 5-minute window are checked before any
+usage-API request; `maxWaitHours` needs the reset time, so it is checked after.
+
+Auto-resume only runs in sessions with a UI (interactive TUI and RPC). Print and
+JSON mode — including subagent children — exit after one prompt, so a scheduled
+message could never fire there; the extension stays inert in those sessions.
 
 ## Provider support
 
@@ -139,6 +147,11 @@ project is trusted**. Later layers win; unknown or invalid fields are ignored.
 - **Single-firer lease** — if two Pi processes attach to the same session, an
   advisory lock elects one firer; the other runs read-only so a job is sent
   exactly once.
+- **Decision log** — every usage-limit error the extension handles gets one
+  `keep-going-auto-resume` session entry recording the action, where the reset
+  time came from, and why a usage-API lookup failed. The entry never reaches the
+  model context; it makes a missed resume diagnosable from the session file, and
+  it ensures an error is handled only once, even across a restart.
 
 ## Development
 

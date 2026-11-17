@@ -5,6 +5,34 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Auto-resume no longer gives up when the reset time cannot be read. When the
+  usage API fails (for example because it is rate-limited itself), a retry is
+  scheduled after 30 minutes, doubling for each consecutive retry and bounded by
+  `maxPerSession` and `maxWaitHours`. Previously the session only showed a
+  notification and stopped.
+- Sessions without a UI (print and JSON mode, including subagent children) no
+  longer query usage APIs, write lease files, or schedule jobs that could never
+  fire. Parallel subagents hitting a limit at once could exhaust the usage API
+  before the interactive session asked for its reset time.
+- `/kg auto` jobs now survive a restart or `/tree` navigation; they were dropped
+  when the job log was replayed.
+
+### Added
+
+- Each handled usage-limit error is recorded as a `keep-going-auto-resume`
+  session entry (action, reset source, usage-API error), so a missed resume can
+  be diagnosed from the session file. The same error is never handled twice,
+  even across a restart.
+
+### Changed
+
+- The enabled, per-session cap, and 5-minute loop guards are checked before the
+  usage API is queried.
+
 ## [1.1.1] — 2026-11-05
 
 ### Fixed
